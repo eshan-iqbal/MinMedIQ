@@ -7,6 +7,8 @@ import {
   PlusCircle,
   FilePenLine,
   Trash2,
+  Search,
+  X,
 } from 'lucide-react';
 import {
   Table,
@@ -75,6 +77,8 @@ const LOW_STOCK_THRESHOLD = 25;
 
 export default function InventoryPage() {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [filteredInventory, setFilteredInventory] = useState<InventoryItem[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
@@ -97,6 +101,7 @@ export default function InventoryPage() {
         const response = await fetch('/api/inventory');
         const data = await response.json();
         setInventory(data);
+        setFilteredInventory(data);
       } catch (error) {
         console.error("Failed to fetch inventory", error);
         toast({
@@ -108,6 +113,23 @@ export default function InventoryPage() {
     }
     fetchInventory();
   }, [toast]);
+
+  // Filter inventory based on search query
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredInventory(inventory);
+      return;
+    }
+
+    const query = searchQuery.toLowerCase();
+    const filtered = inventory.filter(item => 
+      item.name.toLowerCase().includes(query) ||
+      item.batch.toLowerCase().includes(query) ||
+      item.price.toString().includes(query) ||
+      item.stock.toString().includes(query)
+    );
+    setFilteredInventory(filtered);
+  }, [searchQuery, inventory]);
 
   const handleInputChange = (field: keyof FormData, value: string) => {
     if (field === 'isPillBased') {
@@ -158,6 +180,7 @@ export default function InventoryPage() {
 
       const newItem = await response.json();
       setInventory(prev => [...prev, newItem]);
+      setFilteredInventory(prev => [...prev, newItem]);
       
       // Reset form
       setFormData({
@@ -252,6 +275,21 @@ export default function InventoryPage() {
             }
           : item
       ));
+      setFilteredInventory(prev => prev.map(item => 
+        item.id === editingItem.id 
+          ? { 
+              ...item, 
+              name: formData.name, 
+              batch: formData.batch, 
+              expiry: formData.expiry, 
+              price: parseFloat(formData.price), 
+              stock: parseInt(formData.stock),
+              isPillBased: formData.isPillBased,
+              pillsPerStrip: formData.isPillBased ? parseInt(formData.pillsPerStrip) : undefined,
+              stripPrice: formData.isPillBased ? parseFloat(formData.stripPrice) : undefined
+            }
+          : item
+      ));
       
       setIsEditDialogOpen(false);
       setEditingItem(null);
@@ -286,6 +324,7 @@ export default function InventoryPage() {
       }
 
       setInventory(prev => prev.filter(item => item.id !== id));
+      setFilteredInventory(prev => prev.filter(item => item.id !== id));
       toast({
         title: 'Success',
         description: 'Medicine deleted successfully.',
@@ -305,6 +344,26 @@ export default function InventoryPage() {
       <div className="flex items-center">
         <h1 className="text-lg font-semibold md:text-2xl">Inventory</h1>
         <div className="ml-auto flex items-center gap-2">
+          {/* Search Input */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search medicines..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 pr-9 w-64"
+            />
+            {searchQuery && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 p-0"
+                onClick={() => setSearchQuery('')}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
           <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
             <SheetTrigger asChild>
               <Button size="sm" className="h-8 gap-1">
@@ -472,66 +531,93 @@ export default function InventoryPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {inventory.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell className="font-medium">{item.name}</TableCell>
-                  <TableCell>{item.batch}</TableCell>
-                  <TableCell>{item.expiry}</TableCell>
-                  <TableCell>{item.stock}</TableCell>
-                  <TableCell>
-                    {item.isPillBased ? (
-                      <div className="text-xs">
-                        <div className="font-medium">Pill-based</div>
-                        <div className="text-muted-foreground">
-                          {item.pillsPerStrip} pills/₨{item.stripPrice}
-                        </div>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">Regular</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={item.stock < LOW_STOCK_THRESHOLD ? 'destructive' : 'default'}>
-                      {item.stock < LOW_STOCK_THRESHOLD ? 'Low Stock' : 'In Stock'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">₨{item.price.toFixed(2)}</TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
+              {filteredInventory.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-8">
+                    <div className="flex flex-col items-center gap-2">
+                      <Search className="h-8 w-8 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">
+                        {searchQuery ? `No medicines found matching "${searchQuery}"` : 'No medicines found'}
+                      </p>
+                      {searchQuery && (
                         <Button
-                          aria-haspopup="true"
-                          size="icon"
-                          variant="ghost"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSearchQuery('')}
                         >
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Toggle menu</span>
+                          Clear search
                         </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => handleEdit(item)}>
-                          <FilePenLine className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          className="text-destructive"
-                          onClick={() => handleDelete(item.id)}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                filteredInventory.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell className="font-medium">{item.name}</TableCell>
+                    <TableCell>{item.batch}</TableCell>
+                    <TableCell>{item.expiry}</TableCell>
+                    <TableCell>{item.stock}</TableCell>
+                    <TableCell>
+                      {item.isPillBased ? (
+                        <div className="text-xs">
+                          <div className="font-medium">Pill-based</div>
+                          <div className="text-muted-foreground">
+                            {item.pillsPerStrip} pills/₨{item.stripPrice}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Regular</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={item.stock < LOW_STOCK_THRESHOLD ? 'destructive' : 'default'}>
+                        {item.stock < LOW_STOCK_THRESHOLD ? 'Low Stock' : 'In Stock'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">₨{item.price.toFixed(2)}</TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            aria-haspopup="true"
+                            size="icon"
+                            variant="ghost"
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Toggle menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={() => handleEdit(item)}>
+                            <FilePenLine className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            className="text-destructive"
+                            onClick={() => handleDelete(item.id)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>
         <CardFooter>
           <div className="text-xs text-muted-foreground">
-            Showing <strong>1-{inventory.length}</strong> of <strong>{inventory.length}</strong> products
+            Showing <strong>1-{filteredInventory.length}</strong> of <strong>{inventory.length}</strong> products
+            {searchQuery && (
+              <span className="ml-2 text-blue-600">
+                (filtered by "{searchQuery}")
+              </span>
+            )}
           </div>
         </CardFooter>
       </Card>

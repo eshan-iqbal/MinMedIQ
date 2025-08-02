@@ -112,11 +112,7 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-6 text-center text-sm text-muted-foreground">
-            <p>Demo Credentials:</p>
-            <p className="font-mono text-xs mt-1">
-              Email: admin@minmediq.com<br />
-              Password: admin123
-            </p>
+            <p>Contact your administrator for login credentials</p>
           </div>
         </CardContent>
       </Card>

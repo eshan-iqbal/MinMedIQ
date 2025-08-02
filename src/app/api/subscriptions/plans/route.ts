@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
 import { SubscriptionService } from '@/lib/subscription';
 import { requireAdmin } from '@/lib/middleware';
 

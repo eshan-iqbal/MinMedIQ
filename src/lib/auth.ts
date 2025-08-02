@@ -117,7 +117,17 @@ export class AuthService {
   static async getUserById(userId: string): Promise<Omit<User, 'password'> | null> {
     const { client, db } = await connectToDatabase();
     
-    const user = await db.collection('users').findOne({ _id: userId });
+    // Convert string ID to ObjectId if needed
+    let objectId;
+    try {
+      const { ObjectId } = require('mongodb');
+      objectId = new ObjectId(userId);
+    } catch (error) {
+      // If conversion fails, try with string ID
+      objectId = userId;
+    }
+    
+    const user = await db.collection('users').findOne({ _id: objectId });
     if (!user) {
       return null;
     }
@@ -134,8 +144,18 @@ export class AuthService {
   }): Promise<boolean> {
     const { client, db } = await connectToDatabase();
     
+    // Convert string ID to ObjectId if needed
+    let objectId;
+    try {
+      const { ObjectId } = require('mongodb');
+      objectId = new ObjectId(userId);
+    } catch (error) {
+      // If conversion fails, try with string ID
+      objectId = userId;
+    }
+    
     const result = await db.collection('users').updateOne(
-      { _id: userId },
+      { _id: objectId },
       { 
         $set: { 
           ...updateData,
@@ -163,7 +183,7 @@ export class AuthService {
         const userData = { ...userWithoutPassword, _id: user._id.toString() };
         
         // Get user's subscription
-        const subscription = await db.collection('subscriptions').findOne({ userId: user._id.toString() });
+        const subscription = await db.collection('user_subscriptions').findOne({ userId: user._id.toString() });
         if (subscription) {
           // Get subscription plan details
           const plan = await db.collection('subscription_plans').findOne({ _id: subscription.planId });
@@ -176,9 +196,11 @@ export class AuthService {
               currency: plan.currency,
               billingCycle: plan.billingCycle,
               features: plan.features,
-              maxUsers: plan.maxUsers,
-              maxInventory: plan.maxInventory,
-              maxCustomers: plan.maxCustomers,
+              limits: {
+                users: plan.limits?.users || plan.maxUsers,
+                inventory: plan.limits?.inventory || plan.maxInventory,
+                customers: plan.limits?.customers || plan.maxCustomers,
+              },
             } : undefined,
           };
         }
@@ -193,7 +215,17 @@ export class AuthService {
   static async deleteUser(userId: string): Promise<boolean> {
     const { client, db } = await connectToDatabase();
     
-    const result = await db.collection('users').deleteOne({ _id: userId });
+    // Convert string ID to ObjectId if needed
+    let objectId;
+    try {
+      const { ObjectId } = require('mongodb');
+      objectId = new ObjectId(userId);
+    } catch (error) {
+      // If conversion fails, try with string ID
+      objectId = userId;
+    }
+    
+    const result = await db.collection('users').deleteOne({ _id: objectId });
     return result.deletedCount > 0;
   }
 } 

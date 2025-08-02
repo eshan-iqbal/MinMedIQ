@@ -6,7 +6,7 @@ export interface SubscriptionPlan {
   name: 'basic' | 'premium' | 'enterprise';
   price: number;
   currency: string;
-  billingCycle: 'monthly' | 'yearly';
+  billingCycle: 'monthly' | '6months' | 'yearly';
   features: string[];
   maxUsers: number;
   maxInventory: number;
@@ -45,7 +45,7 @@ export class SubscriptionService {
     name: 'basic' | 'premium' | 'enterprise';
     price: number;
     currency: string;
-    billingCycle: 'monthly' | 'yearly';
+    billingCycle: 'monthly' | '6months' | 'yearly';
     features: string[];
     maxUsers: number;
     maxInventory: number;
@@ -95,7 +95,13 @@ export class SubscriptionService {
 
     const startDate = new Date();
     const endDate = new Date();
-    endDate.setMonth(endDate.getMonth() + (plan.billingCycle === 'yearly' ? 12 : 1));
+    if (plan.billingCycle === 'yearly') {
+      endDate.setMonth(endDate.getMonth() + 12);
+    } else if (plan.billingCycle === '6months') {
+      endDate.setMonth(endDate.getMonth() + 6);
+    } else {
+      endDate.setMonth(endDate.getMonth() + 1);
+    }
 
     const subscription: Omit<UserSubscription, '_id'> = {
       userId: subscriptionData.userId,
@@ -159,7 +165,13 @@ export class SubscriptionService {
     }
 
     const newEndDate = new Date();
-    newEndDate.setMonth(newEndDate.getMonth() + (plan.billingCycle === 'yearly' ? 12 : 1));
+    if (plan.billingCycle === 'yearly') {
+      newEndDate.setMonth(newEndDate.getMonth() + 12);
+    } else if (plan.billingCycle === '6months') {
+      newEndDate.setMonth(newEndDate.getMonth() + 6);
+    } else {
+      newEndDate.setMonth(newEndDate.getMonth() + 1);
+    }
 
     const result = await db.collection('user_subscriptions').updateOne(
       { _id: subscriptionId },
@@ -255,9 +267,9 @@ export class SubscriptionService {
       currentInventory: inventoryCount,
       currentCustomers: customerCount,
       limits: {
-        maxUsers: plan.maxUsers,
-        maxInventory: plan.maxInventory,
-        maxCustomers: plan.maxCustomers,
+        maxUsers: plan.limits?.users || plan.maxUsers || -1, // -1 means unlimited
+        maxInventory: plan.limits?.inventory || plan.maxInventory || -1, // -1 means unlimited
+        maxCustomers: plan.limits?.customers || plan.maxCustomers || -1, // -1 means unlimited
       },
     };
   }

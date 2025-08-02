@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
 import { connectToDatabase } from '@/lib/mongodb';
 import { requireAdmin } from '@/lib/middleware';
 import { ObjectId } from 'mongodb';
@@ -48,8 +50,8 @@ export async function POST(request: NextRequest) {
       case 'monthly':
         endDate.setMonth(endDate.getMonth() + 1);
         break;
-      case 'quarterly':
-        endDate.setMonth(endDate.getMonth() + 3);
+      case '6months':
+        endDate.setMonth(endDate.getMonth() + 6);
         break;
       case 'yearly':
         endDate.setFullYear(endDate.getFullYear() + 1);
@@ -59,11 +61,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user already has a subscription
-    const existingSubscription = await db.collection('subscriptions').findOne({ userId });
+    const existingSubscription = await db.collection('user_subscriptions').findOne({ userId });
     
     if (existingSubscription) {
       // Update existing subscription
-      await db.collection('subscriptions').updateOne(
+      await db.collection('user_subscriptions').updateOne(
         { userId },
         {
           $set: {
@@ -78,7 +80,7 @@ export async function POST(request: NextRequest) {
       );
     } else {
       // Create new subscription
-      await db.collection('subscriptions').insertOne({
+      await db.collection('user_subscriptions').insertOne({
         userId,
         planId: new ObjectId(planId),
         status: 'active',
