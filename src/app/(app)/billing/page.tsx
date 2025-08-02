@@ -37,10 +37,13 @@ import {
     SheetFooter,
     SheetClose
 } from '@/components/ui/sheet';
-import { PlusCircle, Printer, Trash2, UserPlus } from 'lucide-react';
+import { PlusCircle, Printer, Trash2, UserPlus, ChevronsUpDown, Check } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { cn } from '@/lib/utils';
 
 
 type Customer = {
@@ -64,7 +67,6 @@ type BillItem = {
 
 export default function BillingPage() {
   const [billItems, setBillItems] = useState<BillItem[]>([]);
-  const [selectedMedicine, setSelectedMedicine] = useState<string>('');
   const [discount, setDiscount] = useState(0);
   const [tax, setTax] = useState(10);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -77,6 +79,11 @@ export default function BillingPage() {
   const [newCustomerName, setNewCustomerName] = useState('');
   const [newCustomerMobile, setNewCustomerMobile] = useState('');
   const [newCustomerAddress, setNewCustomerAddress] = useState('');
+
+  // Combobox state
+  const [openCombobox, setOpenCombobox] = useState(false);
+  const [selectedMedicine, setSelectedMedicine] = useState<string>('');
+
 
   useEffect(() => {
     async function fetchData() {
@@ -332,18 +339,50 @@ export default function BillingPage() {
           <div className="grid gap-3">
             <Label htmlFor="medicine">Add Medicine</Label>
             <div className="flex gap-2">
-              <Select value={selectedMedicine} onValueChange={setSelectedMedicine}>
-                <SelectTrigger id="medicine" aria-label="Select medicine">
-                  <SelectValue placeholder="Select a medicine to add" />
-                </SelectTrigger>
-                <SelectContent>
-                  {medicines.map(med => (
-                    <SelectItem key={med.id} value={med.id} disabled={med.stock <= 0}>
-                      {med.name} (${med.price.toFixed(2)}) - Stock: {med.stock}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
+                    <PopoverTrigger asChild>
+                        <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={openCombobox}
+                            className="w-full justify-between"
+                        >
+                            {selectedMedicine
+                                ? medicines.find((med) => med.id === selectedMedicine)?.name
+                                : "Select a medicine to add"}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                        <Command>
+                            <CommandInput placeholder="Search medicine..." />
+                            <CommandList>
+                                <CommandEmpty>No medicine found.</CommandEmpty>
+                                <CommandGroup>
+                                    {medicines.map((med) => (
+                                        <CommandItem
+                                            key={med.id}
+                                            value={med.id}
+                                            disabled={med.stock <= 0}
+                                            onSelect={(currentValue) => {
+                                                setSelectedMedicine(currentValue === selectedMedicine ? "" : currentValue)
+                                                setOpenCombobox(false)
+                                            }}
+                                        >
+                                            <Check
+                                                className={cn(
+                                                    "mr-2 h-4 w-4",
+                                                    selectedMedicine === med.id ? "opacity-100" : "opacity-0"
+                                                )}
+                                            />
+                                            {med.name} (${med.price.toFixed(2)}) - Stock: {med.stock}
+                                        </CommandItem>
+                                    ))}
+                                </CommandGroup>
+                            </CommandList>
+                        </Command>
+                    </PopoverContent>
+                </Popover>
               <Button onClick={handleAddItem} size="icon" variant="outline" aria-label="Add item">
                 <PlusCircle className="h-4 w-4" />
               </Button>
