@@ -1,17 +1,19 @@
 'use server';
 
 import { NextResponse } from 'next/server';
-
-// In-memory data store for staff
-let staffData = [
-  { id: '1', name: 'Admin User', role: 'Admin', email: 'admin@minmediq.com' },
-  { id: '2', name: 'Pharma One', role: 'Pharmacist', email: 'pharma1@minmediq.com' },
-  { id: '3', name: 'Cashier One', role: 'Cashier', email: 'cashier1@minmediq.com' },
-];
+import { connectToDatabase } from '@/lib/mongodb';
 
 // GET all staff
 export async function GET() {
-  return NextResponse.json(staffData);
+  try {
+    const { db } = await connectToDatabase();
+    const staff = await db.collection('staff').find({}).toArray();
+    const staffWithId = staff.map(member => ({...member, id: member._id.toString()}));
+    return NextResponse.json(staffWithId);
+  } catch (error) {
+    console.error('Failed to fetch staff:', error);
+    return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+  }
 }
 
 // POST a new staff member
@@ -23,12 +25,14 @@ export async function POST(request: Request) {
             return NextResponse.json({ message: 'Name, role, and email are required' }, { status: 400 });
         }
 
-        const newStaff = {
-            id: `S${Date.now()}`,
-            ...newStaffData,
-        };
-        staffData.push(newStaff);
+        const { db } = await connectToDatabase();
+        const result = await db.collection('staff').insertOne(newStaffData);
         
+        const newStaff = {
+            id: result.insertedId.toString(),
+            ...newStaffData
+        };
+
         return NextResponse.json(newStaff, { status: 201 });
 
     } catch (error) {

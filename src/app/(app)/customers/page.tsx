@@ -28,7 +28,6 @@ import {
   SheetDescription,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
   SheetFooter,
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -80,7 +79,8 @@ export default function CustomersPage() {
       const response = await fetch('/api/customers');
       if(!response.ok) throw new Error('Failed to fetch');
       const data = await response.json();
-      setCustomers(data);
+      const formattedData = data.map((customer: any) => ({...customer, id: customer._id.toString()}));
+      setCustomers(formattedData);
     } catch (error) {
       console.error('Failed to fetch customers', error);
       toast({
@@ -230,6 +230,7 @@ export default function CustomersPage() {
         customer={editingCustomer}
         onFormSubmit={() => {
           setIsSheetOpen(false);
+          setEditingCustomer(null);
           fetchCustomers();
         }}
       />
@@ -255,12 +256,17 @@ function CustomerFormSheet({ open, onOpenChange, customer, onFormSubmit }: Custo
         } else {
             setFormData(initialCustomerState);
         }
-    }, [customer]);
+    }, [customer, open]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { id, value } = e.target;
         setFormData(prev => ({ ...prev, [id]: value }));
     };
+    
+    const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { id, value } = e.target;
+        setFormData(prev => ({...prev, [id]: Number(value) }));
+    }
 
     const handleSubmit = async () => {
         const url = customer ? `/api/customers/${customer.id}` : '/api/customers';
@@ -274,7 +280,6 @@ function CustomerFormSheet({ open, onOpenChange, customer, onFormSubmit }: Custo
             });
 
             if (response.ok) {
-                const result = await response.json();
                 toast({
                     title: 'Success',
                     description: `Customer ${customer ? 'updated' : 'created'} successfully.`,
@@ -322,7 +327,7 @@ function CustomerFormSheet({ open, onOpenChange, customer, onFormSubmit }: Custo
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="creditLimit" className="text-right">Credit Limit (₹)</Label>
-                        <Input id="creditLimit" type="number" value={formData.creditLimit} onChange={handleChange} className="col-span-3" />
+                        <Input id="creditLimit" type="number" value={formData.creditLimit} onChange={handleNumberChange} className="col-span-3" />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="prescriptionNotes" className="text-right">Prescription Notes</Label>
@@ -341,5 +346,3 @@ function CustomerFormSheet({ open, onOpenChange, customer, onFormSubmit }: Custo
         </Sheet>
     );
 }
-
-    

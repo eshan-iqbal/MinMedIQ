@@ -1,42 +1,38 @@
 'use server';
 
 import { NextResponse } from 'next/server';
+import { connectToDatabase } from '@/lib/mongodb';
 
-const inventoryData = [
-  {
-    id: '1',
-    name: 'Paracetamol 500mg',
-    batch: 'P202301',
-    expiry: '2025-12-31',
-    price: 5.99,
-    stock: 150,
-  },
-  {
-    id: '2',
-    name: 'Amoxicillin 250mg',
-    batch: 'A202305',
-    expiry: '2024-11-30',
-    price: 12.5,
-    stock: 80,
-  },
-  {
-    id: '3',
-    name: 'Ibuprofen 200mg',
-    batch: 'I202303',
-    expiry: '2026-05-31',
-    price: 8.75,
-    stock: 20,
-  },
-   {
-    id: '4',
-    name: 'Cough Syrup',
-    batch: 'CS202401',
-    expiry: '2025-08-01',
-    price: 15.00,
-    stock: 5,
-  },
-];
-
+// GET all inventory items
 export async function GET() {
-  return NextResponse.json(inventoryData);
+  try {
+    const { db } = await connectToDatabase();
+    const inventory = await db.collection('inventory').find({}).toArray();
+    const inventoryWithId = inventory.map(item => ({...item, id: item._id.toString()}));
+    return NextResponse.json(inventoryWithId);
+  } catch (error) {
+    console.error('Failed to fetch inventory:', error);
+    return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+  }
+}
+
+// POST a new inventory item
+export async function POST(request: Request) {
+    try {
+        const newItemData = await request.json();
+        
+        const { db } = await connectToDatabase();
+        const result = await db.collection('inventory').insertOne(newItemData);
+        
+        const newItem = {
+            id: result.insertedId.toString(),
+            ...newItemData,
+        };
+        
+        return NextResponse.json(newItem, { status: 201 });
+
+    } catch (error) {
+        console.error('Failed to create inventory item:', error);
+        return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+    }
 }

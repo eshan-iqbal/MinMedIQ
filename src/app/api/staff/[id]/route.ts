@@ -1,24 +1,30 @@
 'use server';
 
 import { NextResponse } from 'next/server';
-
-// This is a mock database. In a real application, you would use a proper database.
-let staffData = [
-  { id: '1', name: 'Admin User', role: 'Admin', email: 'admin@minmediq.com' },
-  { id: '2', name: 'Pharma One', role: 'Pharmacist', email: 'pharma1@minmediq.com' },
-  { id: '3', name: 'Cashier One', role: 'Cashier', email: 'cashier1@minmediq.com' },
-];
+import { connectToDatabase } from '@/lib/mongodb';
+import { ObjectId } from 'mongodb';
 
 // GET a single staff member by ID
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const staff = staffData.find(c => c.id === params.id);
-  if (staff) {
-    return NextResponse.json(staff);
-  }
-  return NextResponse.json({ message: 'Staff member not found' }, { status: 404 });
+    try {
+        if (!ObjectId.isValid(params.id)) {
+            return NextResponse.json({ message: 'Invalid staff ID' }, { status: 400 });
+        }
+        const { db } = await connectToDatabase();
+        const staff = await db.collection('staff').findOne({ _id: new ObjectId(params.id) });
+        
+        if (staff) {
+          const mappedStaff = { ...staff, id: staff._id.toString(), _id: undefined };
+          return NextResponse.json(mappedStaff);
+        }
+        return NextResponse.json({ message: 'Staff not found' }, { status: 404 });
+    } catch (error) {
+        console.error('Failed to fetch staff:', error);
+        return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+    }
 }
 
 // PUT (update) a staff member by ID
@@ -27,16 +33,25 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    if (!ObjectId.isValid(params.id)) {
+        return NextResponse.json({ message: 'Invalid staff ID' }, { status: 400 });
+    }
     const updatedData = await request.json();
-    const staffIndex = staffData.findIndex(c => c.id === params.id);
+    delete updatedData.id;
+    delete updatedData._id;
 
-    if (staffIndex === -1) {
+    const { db } = await connectToDatabase();
+    const result = await db.collection('staff').updateOne(
+        { _id: new ObjectId(params.id) },
+        { $set: updatedData }
+    );
+
+    if (result.matchedCount === 0) {
       return NextResponse.json({ message: 'Staff member not found' }, { status: 404 });
     }
-    
-    // In a real app, you wouldn't be able to update an id, but for this mock API it's fine.
-    staffData[staffIndex] = { ...staffData[staffIndex], ...updatedData, id: params.id };
-    return NextResponse.json(staffData[staffIndex]);
+
+    const updatedStaff = await db.collection('staff').findOne({ _id: new ObjectId(params.id) });
+    return NextResponse.json(updatedStaff);
 
   } catch (error) {
     console.error('Failed to update staff member:', error);
@@ -49,10 +64,19 @@ export async function DELETE(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const staffIndex = staffData.findIndex(c => c.id === params.id);
-  if (staffIndex > -1) {
-    staffData.splice(staffIndex, 1);
-    return NextResponse.json({ message: 'Staff member deleted' });
-  }
-  return NextResponse.json({ message: 'Staff member not found' }, { status: 404 });
+    try {
+        if (!ObjectId.isValid(params.id)) {
+            return NextResponse.json({ message: 'Invalid staff ID' }, { status: 400 });
+        }
+        const { db } = await connectToDatabase();
+        const result = await db.collection('staff').deleteOne({ _id: new ObjectId(params.id) });
+
+        if (result.deletedCount === 0) {
+            return NextResponse.json({ message: 'Staff member not found' }, { status: 404 });
+        }
+        return NextResponse.json({ message: 'Staff member deleted' });
+    } catch (error) {
+        console.error('Failed to delete staff member:', error);
+        return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+    }
 }

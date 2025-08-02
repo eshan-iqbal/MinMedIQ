@@ -1,41 +1,18 @@
 'use server';
 
 import { NextResponse } from 'next/server';
-
-// In-memory data store
-let customersData = [
-  {
-    id: '1',
-    name: 'John Doe',
-    mobile: '123-456-7890',
-    email: 'john.doe@example.com',
-    address: '123 Main St, Anytown, USA',
-    creditLimit: 5000,
-    prescriptionNotes: 'Allergic to penicillin.'
-  },
-  {
-    id: '2',
-    name: 'Jane Smith',
-    mobile: '987-654-3210',
-    email: 'jane.smith@example.com',
-    address: '456 Oak Ave, Othertown, USA',
-    creditLimit: 10000,
-    prescriptionNotes: ''
-  },
-  {
-    id: '3',
-    name: 'Peter Jones',
-    mobile: '555-555-5555',
-    email: 'peter.jones@example.com',
-    address: '789 Pine Ln, Sometown, USA',
-    creditLimit: 2500,
-    prescriptionNotes: 'Needs monthly refill for diabetes medication.'
-  },
-];
+import { connectToDatabase } from '@/lib/mongodb';
 
 // GET all customers
 export async function GET() {
-  return NextResponse.json(customersData);
+  try {
+    const { db } = await connectToDatabase();
+    const customers = await db.collection('customers').find({}).toArray();
+    return NextResponse.json(customers);
+  } catch (error) {
+    console.error('Failed to fetch customers:', error);
+    return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+  }
 }
 
 // POST a new customer
@@ -46,12 +23,14 @@ export async function POST(request: Request) {
         if (!newCustomerData.name || !newCustomerData.mobile) {
             return NextResponse.json({ message: 'Name and mobile are required' }, { status: 400 });
         }
-
+        
+        const { db } = await connectToDatabase();
+        const result = await db.collection('customers').insertOne(newCustomerData);
+        
         const newCustomer = {
-            id: `C${Date.now()}`,
+            id: result.insertedId.toString(),
             ...newCustomerData,
         };
-        customersData.push(newCustomer);
         
         return NextResponse.json(newCustomer, { status: 201 });
 
@@ -60,5 +39,3 @@ export async function POST(request: Request) {
         return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
     }
 }
-
-    
