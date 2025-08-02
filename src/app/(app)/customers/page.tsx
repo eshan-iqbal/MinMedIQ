@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   FilePenLine,
   MoreHorizontal,
@@ -37,31 +37,37 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
 
-const customersData = [
-  {
-    id: '1',
-    name: 'John Doe',
-    mobile: '123-456-7890',
-    address: '123 Main St, Anytown, USA',
-  },
-  {
-    id: '2',
-    name: 'Jane Smith',
-    mobile: '987-654-3210',
-    address: '456 Oak Ave, Othertown, USA',
-  },
-  {
-    id: '3',
-    name: 'Peter Jones',
-    mobile: '555-555-5555',
-    address: '789 Pine Ln, Sometown, USA',
-  },
-];
+type Customer = {
+    id: string;
+    name: string;
+    mobile: string;
+    address: string;
+};
 
 export default function CustomersPage() {
-  const [customers, setCustomers] = useState(customersData);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    async function fetchCustomers() {
+      try {
+        const response = await fetch('/api/customers');
+        const data = await response.json();
+        setCustomers(data);
+      } catch (error) {
+        console.error('Failed to fetch customers', error);
+        toast({
+            title: 'Error',
+            description: 'Failed to load customers.',
+            variant: 'destructive'
+        });
+      }
+    }
+    fetchCustomers();
+  }, [toast]);
 
   return (
     <>
@@ -177,7 +183,7 @@ export default function CustomersPage() {
         </CardContent>
          <CardFooter>
           <div className="text-xs text-muted-foreground">
-            Showing <strong>1-3</strong> of <strong>{customers.length}</strong> customers
+            Showing <strong>1-{customers.length}</strong> of <strong>{customers.length}</strong> customers
           </div>
         </CardFooter>
       </Card>

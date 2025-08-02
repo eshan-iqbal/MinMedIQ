@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -16,7 +16,6 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-  TableFooter
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,19 +29,20 @@ import {
 } from '@/components/ui/select';
 import { PlusCircle, Printer, Trash2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { useToast } from '@/hooks/use-toast';
 
-const customersData = [
-  { id: '1', name: 'John Doe' },
-  { id: '2', name: 'Jane Smith' },
-  { id: '3', name: 'Peter Jones' },
-];
 
-const medicinesData = [
-  { id: '1', name: 'Paracetamol 500mg', price: 5.99, stock: 150 },
-  { id: '2', name: 'Amoxicillin 250mg', price: 12.5, stock: 80 },
-  { id: '3', name: 'Ibuprofen 200mg', price: 8.75, stock: 20 },
-  { id: '4', name: 'Cough Syrup', price: 15.00, stock: 5 },
-];
+type Customer = {
+  id: string;
+  name: string;
+};
+
+type Medicine = {
+  id: string;
+  name: string;
+  price: number;
+  stock: number;
+};
 
 type BillItem = {
   medicineId: string;
@@ -55,22 +55,65 @@ export default function BillingPage() {
   const [billItems, setBillItems] = useState<BillItem[]>([]);
   const [selectedMedicine, setSelectedMedicine] = useState<string>('');
   const [discount, setDiscount] = useState(0);
-  const [tax, setTax] = useState(10); // Example: 10% tax
+  const [tax, setTax] = useState(10);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [medicines, setMedicines] = useState<Medicine[]>([]);
+  const [selectedCustomer, setSelectedCustomer] = useState<string>('');
+  const { toast } = useToast();
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const customersRes = await fetch('/api/customers');
+        const customersData = await customersRes.json();
+        setCustomers(customersData);
+
+        const medicinesRes = await fetch('/api/medicines');
+        const medicinesData = await medicinesRes.json();
+        setMedicines(medicinesData);
+      } catch (error) {
+        console.error("Failed to fetch data", error);
+        toast({
+            title: 'Error',
+            description: 'Failed to load initial data.',
+            variant: 'destructive'
+        });
+      }
+    }
+    fetchData();
+  }, [toast]);
 
   const handleAddItem = () => {
     if (!selectedMedicine) return;
-    const medicine = medicinesData.find(m => m.id === selectedMedicine);
+    const medicine = medicines.find(m => m.id === selectedMedicine);
     if (!medicine) return;
+
+    if(medicine.stock <= 0) {
+        toast({
+            title: 'Out of Stock',
+            description: `${medicine.name} is out of stock.`,
+            variant: 'destructive'
+        });
+        return;
+    }
 
     const existingItem = billItems.find(item => item.medicineId === medicine.id);
     if (existingItem) {
-      setBillItems(
-        billItems.map(item =>
-          item.medicineId === medicine.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        )
-      );
+      if (existingItem.quantity < medicine.stock) {
+        setBillItems(
+          billItems.map(item =>
+            item.medicineId === medicine.id
+              ? { ...item, quantity: item.quantity + 1 }
+              : item
+          )
+        );
+      } else {
+        toast({
+            title: 'Stock Limit Reached',
+            description: `You cannot add more ${medicine.name} than is available in stock.`,
+            variant: 'destructive'
+        });
+      }
     } else {
       setBillItems([
         ...billItems,
@@ -85,7 +128,22 @@ export default function BillingPage() {
   };
   
   const handleQuantityChange = (medicineId: string, quantity: number) => {
-    if (quantity < 1) return;
+    const medicine = medicines.find(m => m.id === medicineId);
+    if(!medicine) return;
+
+    if (quantity < 1) {
+        handleRemoveItem(medicineId);
+        return;
+    };
+    if (quantity > medicine.stock) {
+        toast({
+            title: 'Stock Limit Exceeded',
+            description: `Only ${medicine.stock} units of ${medicine.name} available.`,
+            variant: 'destructive'
+        });
+        setBillItems(billItems.map(item => item.medicineId === medicineId ? {...item, quantity: medicine.stock} : item));
+        return;
+    }
     setBillItems(billItems.map(item => item.medicineId === medicineId ? {...item, quantity} : item));
   };
 
@@ -99,6 +157,59 @@ export default function BillingPage() {
     return subtotal + taxAmount - discount;
   }, [subtotal, taxAmount, discount]);
 
+  const handleSaveBill = async () => {
+    if (!selectedCustomer) {
+      toast({ title: 'Error', description: 'Please select a customer.', variant: 'destructive' });
+      return;
+    }
+    if (billItems.length === 0) {
+      toast({ title: 'Error', description: 'Please add items to the bill.', variant: 'destructive' });
+      return;
+    }
+
+    const billData = {
+      customerId: selectedCustomer,
+      items: billItems,
+      subtotal,
+      tax,
+      taxAmount,
+      discount,
+      grandTotal,
+      billDate: new Date().toISOString()
+    };
+
+    try {
+      const response = await fetch('/api/billing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(billData),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        toast({
+          title: 'Success',
+          description: `Bill ${result.billId} saved successfully.`,
+        });
+        // Reset state
+        setBillItems([]);
+        setDiscount(0);
+        setSelectedCustomer('');
+
+      } else {
+        throw new Error('Failed to save the bill');
+      }
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: 'Error',
+        description: 'Something went wrong while saving the bill.',
+        variant: 'destructive'
+      });
+    }
+  };
+
+
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
       <Card className="lg:col-span-4">
@@ -111,12 +222,12 @@ export default function BillingPage() {
         <CardContent className="grid gap-6">
           <div className="grid gap-3">
             <Label htmlFor="customer">Customer</Label>
-            <Select>
+            <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
               <SelectTrigger id="customer" aria-label="Select customer">
                 <SelectValue placeholder="Select a customer" />
               </SelectTrigger>
               <SelectContent>
-                {customersData.map(customer => (
+                {customers.map(customer => (
                   <SelectItem key={customer.id} value={customer.id}>
                     {customer.name}
                   </SelectItem>
@@ -132,8 +243,8 @@ export default function BillingPage() {
                   <SelectValue placeholder="Select a medicine to add" />
                 </SelectTrigger>
                 <SelectContent>
-                  {medicinesData.map(med => (
-                    <SelectItem key={med.id} value={med.id}>
+                  {medicines.map(med => (
+                    <SelectItem key={med.id} value={med.id} disabled={med.stock <= 0}>
                       {med.name} (${med.price.toFixed(2)}) - Stock: {med.stock}
                     </SelectItem>
                   ))}
@@ -171,8 +282,10 @@ export default function BillingPage() {
                       <Input 
                         type="number" 
                         value={item.quantity} 
-                        onChange={(e) => handleQuantityChange(item.medicineId, parseInt(e.target.value))}
+                        onChange={(e) => handleQuantityChange(item.medicineId, parseInt(e.target.value) || 0)}
                         className="h-8 w-16"
+                        min="1"
+                        max={medicines.find(m => m.id === item.medicineId)?.stock}
                       />
                     </TableCell>
                     <TableCell className="text-right">${item.price.toFixed(2)}</TableCell>
@@ -218,8 +331,8 @@ export default function BillingPage() {
           </div>
         </CardContent>
         <CardFooter className="flex-col gap-2 items-stretch">
-          <Button className="w-full">Save Bill</Button>
-          <Button className="w-full" variant="outline">
+          <Button className="w-full" onClick={handleSaveBill}>Save Bill</Button>
+          <Button className="w-full" variant="outline" onClick={() => window.print()}>
             <Printer className="mr-2 h-4 w-4" />
             Print Bill
           </Button>

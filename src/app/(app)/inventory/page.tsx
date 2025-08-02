@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   MoreHorizontal,
   PlusCircle,
@@ -37,47 +37,41 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
 
-const inventoryData = [
-  {
-    id: '1',
-    name: 'Paracetamol 500mg',
-    batch: 'P202301',
-    expiry: '2025-12-31',
-    price: 5.99,
-    stock: 150,
-  },
-  {
-    id: '2',
-    name: 'Amoxicillin 250mg',
-    batch: 'A202305',
-    expiry: '2024-11-30',
-    price: 12.5,
-    stock: 80,
-  },
-  {
-    id: '3',
-    name: 'Ibuprofen 200mg',
-    batch: 'I202303',
-    expiry: '2026-05-31',
-    price: 8.75,
-    stock: 20,
-  },
-   {
-    id: '4',
-    name: 'Cough Syrup',
-    batch: 'CS202401',
-    expiry: '2025-08-01',
-    price: 15.00,
-    stock: 5,
-  },
-];
+type InventoryItem = {
+    id: string;
+    name: string;
+    batch: string;
+    expiry: string;
+    price: number;
+    stock: number;
+}
 
 const LOW_STOCK_THRESHOLD = 25;
 
 export default function InventoryPage() {
-  const [inventory, setInventory] = useState(inventoryData);
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    async function fetchInventory() {
+      try {
+        const response = await fetch('/api/inventory');
+        const data = await response.json();
+        setInventory(data);
+      } catch (error) {
+        console.error("Failed to fetch inventory", error);
+        toast({
+            title: 'Error',
+            description: 'Failed to load inventory.',
+            variant: 'destructive'
+        });
+      }
+    }
+    fetchInventory();
+  }, [toast]);
 
   return (
     <>
@@ -209,7 +203,7 @@ export default function InventoryPage() {
         </CardContent>
         <CardFooter>
           <div className="text-xs text-muted-foreground">
-            Showing <strong>1-4</strong> of <strong>{inventory.length}</strong> products
+            Showing <strong>1-{inventory.length}</strong> of <strong>{inventory.length}</strong> products
           </div>
         </CardFooter>
       </Card>
