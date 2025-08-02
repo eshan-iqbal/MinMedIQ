@@ -121,11 +121,11 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
             <CardContent className="grid md:grid-cols-3 gap-4">
                 <div className="space-y-1">
                     <p className="text-sm font-medium text-muted-foreground">Credit Limit</p>
-                    <p>₹{customer.creditLimit?.toFixed(2) ?? '0.00'}</p>
+                    <p>₨{customer.creditLimit?.toFixed(2) ?? '0.00'}</p>
                 </div>
                 <div className="space-y-1">
                     <p className="text-sm font-medium text-muted-foreground">Outstanding Balance</p>
-                    <p className="font-semibold text-destructive">₹{/* Calculate from bills */ '0.00'}</p>
+                    <p className="font-semibold text-destructive">₨{/* Calculate from bills */ '0.00'}</p>
                 </div>
             </CardContent>
         </Card>
@@ -195,7 +195,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
                                     <TableCell>
                                         <Badge variant={bill.status === 'Credit' ? 'destructive' : 'secondary'}>{bill.status}</Badge>
                                     </TableCell>
-                                    <TableCell className="text-right">₹{bill.grandTotal.toFixed(2)}</TableCell>
+                                    <TableCell className="text-right">₨{bill.grandTotal.toFixed(2)}</TableCell>
                                 </TableRow>
                             ))
                         ) : (

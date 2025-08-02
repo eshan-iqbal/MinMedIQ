@@ -8,7 +8,18 @@ export async function GET() {
   try {
     const { db } = await connectToDatabase();
     const customers = await db.collection('customers').find({}).toArray();
-    return NextResponse.json(customers);
+    
+    const formattedCustomers = customers.map(customer => ({
+        id: customer._id.toString(),
+        name: customer.name,
+        mobile: customer.mobile,
+        email: customer.email,
+        address: customer.address,
+        creditLimit: customer.creditLimit,
+        prescriptionNotes: customer.prescriptionNotes
+    }));
+    
+    return NextResponse.json(formattedCustomers);
   } catch (error) {
     console.error('Failed to fetch customers:', error);
     return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });

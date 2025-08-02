@@ -79,7 +79,10 @@ export default function CustomersPage() {
       const response = await fetch('/api/customers');
       if(!response.ok) throw new Error('Failed to fetch');
       const data = await response.json();
-      const formattedData = data.map((customer: any) => ({...customer, id: customer._id.toString()}));
+      const formattedData = data.map((customer: any) => ({
+        ...customer, 
+        id: customer._id ? customer._id.toString() : customer.id || ''
+      }));
       setCustomers(formattedData);
     } catch (error) {
       console.error('Failed to fetch customers', error);
@@ -169,7 +172,7 @@ export default function CustomersPage() {
                     <div className="text-sm text-muted-foreground">{customer.email}</div>
                   </TableCell>
                   <TableCell className='max-w-xs truncate'>{customer.address}</TableCell>
-                   <TableCell>₹{customer.creditLimit?.toFixed(2) ?? '0.00'}</TableCell>
+                   <TableCell>₨{customer.creditLimit?.toFixed(2) ?? '0.00'}</TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -326,7 +329,7 @@ function CustomerFormSheet({ open, onOpenChange, customer, onFormSubmit }: Custo
                         <Textarea id="address" value={formData.address} onChange={handleChange} className="col-span-3" />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="creditLimit" className="text-right">Credit Limit (₹)</Label>
+                        <Label htmlFor="creditLimit" className="text-right">Credit Limit (₨)</Label>
                         <Input id="creditLimit" type="number" value={formData.creditLimit} onChange={handleNumberChange} className="col-span-3" />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">

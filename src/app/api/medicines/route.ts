@@ -8,15 +8,16 @@ export async function GET() {
   try {
     const { db } = await connectToDatabase();
     // Assuming medicines are stored in the 'inventory' collection
-    const medicines = await db.collection('inventory').find({}, {
-        projection: { name: 1, price: 1, stock: 1 }
-    }).toArray();
+    const medicines = await db.collection('inventory').find({}).toArray();
 
     const formattedMedicines = medicines.map(med => ({
         id: med._id.toString(),
         name: med.name,
         price: med.price,
-        stock: med.stock
+        stock: med.stock,
+        pillsPerStrip: med.pillsPerStrip,
+        stripPrice: med.stripPrice,
+        isPillBased: med.isPillBased
     }));
 
     return NextResponse.json(formattedMedicines);

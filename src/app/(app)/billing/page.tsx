@@ -38,14 +38,13 @@ import {
     SheetFooter,
     SheetClose
 } from '@/components/ui/sheet';
-import { PlusCircle, Printer, Trash2, UserPlus, ChevronsUpDown, Check } from 'lucide-react';
+import { PlusCircle, Printer, Trash2, UserPlus, ChevronsUpDown, Check, Plus } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
-
 
 type Customer = {
   id: string;
@@ -57,6 +56,9 @@ type Medicine = {
   name: string;
   price: number;
   stock: number;
+  pillsPerStrip?: number;
+  stripPrice?: number;
+  isPillBased?: boolean;
 };
 
 type BillItem = {
@@ -64,6 +66,10 @@ type BillItem = {
   name: string;
   quantity: number;
   price: number;
+  isPillBased?: boolean;
+  pillsPerStrip?: number;
+  stripPrice?: number;
+  pillQuantity?: number; // For pill-based medicines
 };
 
 export default function BillingPage() {
@@ -82,9 +88,49 @@ export default function BillingPage() {
   const [newCustomerMobile, setNewCustomerMobile] = useState('');
   const [newCustomerAddress, setNewCustomerAddress] = useState('');
 
-  // Combobox state
-  const [openCombobox, setOpenCombobox] = useState(false);
+  // Medicine selection state
   const [selectedMedicine, setSelectedMedicine] = useState<string>('');
+  const [openCombobox, setOpenCombobox] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showMedicineList, setShowMedicineList] = useState(false);
+  const [showPillBasedOnly, setShowPillBasedOnly] = useState(false);
+
+  // Filter medicines based on search term and pill-based filter
+  const filteredMedicines = useMemo(() => {
+    let filtered = medicines;
+    
+    // Filter by pill-based if enabled
+    if (showPillBasedOnly) {
+      filtered = filtered.filter(med => med.isPillBased);
+    }
+    
+    // Filter by search term
+    if (searchTerm) {
+      filtered = filtered.filter(med => 
+        med.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    return filtered;
+  }, [medicines, searchTerm, showPillBasedOnly]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!target.closest('.medicine-dropdown-container')) {
+        setShowMedicineList(false);
+      }
+    };
+
+    if (showMedicineList) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showMedicineList]);
 
 
   useEffect(() => {
@@ -150,9 +196,24 @@ export default function BillingPage() {
 
 
   const handleAddItem = () => {
-    if (!selectedMedicine) return;
+    if (!selectedMedicine) {
+      toast({
+        title: 'No Medicine Selected',
+        description: 'Please select a medicine from the dropdown.',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
     const medicine = medicines.find(m => m.id === selectedMedicine);
-    if (!medicine) return;
+    if (!medicine) {
+      toast({
+        title: 'Medicine Not Found',
+        description: 'Selected medicine could not be found.',
+        variant: 'destructive'
+      });
+      return;
+    }
 
     if(medicine.stock <= 0) {
         toast({
@@ -173,6 +234,10 @@ export default function BillingPage() {
               : item
           )
         );
+        toast({
+          title: 'Item Updated',
+          description: `Increased quantity of ${medicine.name}`,
+        });
       } else {
         toast({
             title: 'Stock Limit Reached',
@@ -185,8 +250,13 @@ export default function BillingPage() {
         ...billItems,
         { medicineId: medicine.id, name: medicine.name, quantity: 1, price: medicine.price },
       ]);
+      toast({
+        title: 'Item Added',
+        description: `Added ${medicine.name} to the bill`,
+      });
     }
     setSelectedMedicine('');
+    setOpenCombobox(false);
   };
 
   const handleRemoveItem = (medicineId: string) => {
@@ -213,9 +283,44 @@ export default function BillingPage() {
     setBillItems(billItems.map(item => item.medicineId === medicineId ? {...item, quantity} : item));
   };
 
+  const handlePillQuantityChange = (medicineId: string, pillQuantity: number) => {
+    const medicine = medicines.find(m => m.id === medicineId);
+    if(!medicine) return;
+
+    if (pillQuantity < 1) {
+        handleRemoveItem(medicineId);
+        return;
+    };
+    
+    const maxPills = medicine.stock * (medicine.pillsPerStrip || 1);
+    if (pillQuantity > maxPills) {
+        toast({
+            title: 'Stock Limit Exceeded',
+            description: `Only ${maxPills} pills of ${medicine.name} available.`,
+            variant: 'destructive'
+        });
+        setBillItems(billItems.map(item => item.medicineId === medicineId ? {...item, pillQuantity: maxPills} : item));
+        return;
+    }
+    setBillItems(billItems.map(item => item.medicineId === medicineId ? {...item, pillQuantity} : item));
+  };
+
   const subtotal = useMemo(() => {
-    return billItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
-  }, [billItems]);
+    return billItems.reduce((acc, item) => {
+      const medicine = medicines.find(m => m.id === item.medicineId);
+      const isPillBased = item.isPillBased || medicine?.isPillBased;
+      
+      if (isPillBased) {
+        const pillsPerStrip = item.pillsPerStrip || medicine?.pillsPerStrip || 1;
+        const stripPrice = item.stripPrice || medicine?.stripPrice || 0;
+        const pillQuantity = item.pillQuantity || 0;
+        const unitPrice = stripPrice / pillsPerStrip;
+        return acc + (unitPrice * pillQuantity);
+      } else {
+        return acc + (item.price * item.quantity);
+      }
+    }, 0);
+  }, [billItems, medicines]);
 
   const taxAmount = useMemo(() => (subtotal * tax) / 100, [subtotal, tax]);
   
@@ -256,13 +361,130 @@ export default function BillingPage() {
         const result = await response.json();
         toast({
           title: 'Success',
-          description: `Bill ${result.billId} saved successfully.`,
+          description: `Bill ${result.billNumber} saved successfully!`,
         });
-        // Reset state
-        setBillItems([]);
-        setDiscount(0);
-        setSelectedCustomer('');
-        setPaymentMethod('cash');
+        
+                 // Store the selected customer ID before resetting
+         const currentCustomerId = selectedCustomer;
+         
+         // Reset state
+         setBillItems([]);
+         setDiscount(0);
+         setSelectedCustomer('');
+         setPaymentMethod('cash');
+         setSelectedMedicine('');
+
+         // Show success message with bill details
+         setTimeout(() => {
+           if (confirm(`Bill ${result.billNumber} saved successfully! Would you like to print the bill?`)) {
+             // Create a simple bill print
+             const printWindow = window.open('', '_blank');
+             if (printWindow) {
+               const customer = customers.find(c => c.id === currentCustomerId);
+              printWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                  <title>Bill ${result.billNumber}</title>
+                  <style>
+                    body { font-family: Arial, sans-serif; margin: 20px; }
+                    .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
+                    .bill-info { margin-bottom: 20px; }
+                    .items-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+                    .items-table th, .items-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                    .items-table th { background-color: #f2f2f2; }
+                    .totals { margin-top: 20px; }
+                    .total-row { display: flex; justify-content: space-between; margin: 5px 0; }
+                    .grand-total { font-weight: bold; font-size: 18px; border-top: 2px solid #000; padding-top: 10px; }
+                    @media print { body { margin: 0; } }
+                  </style>
+                </head>
+                <body>
+                  <div class="header">
+                    <h1>MinMedIQ Pharmacy</h1>
+                    <p>Medical Store & Pharmacy</p>
+                    <p>Bill ${result.billNumber}</p>
+                  </div>
+                  
+                  <div class="bill-info">
+                    <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
+                    <p><strong>Customer:</strong> ${customer?.name || 'Unknown'}</p>
+                    <p><strong>Payment Method:</strong> ${paymentMethod}</p>
+                  </div>
+                  
+                  <table class="items-table">
+                    <thead>
+                      <tr>
+                        <th>Item</th>
+                        <th>Qty</th>
+                        <th>Price</th>
+                        <th>Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${billItems.map(item => {
+                        const medicine = medicines.find(m => m.id === item.medicineId);
+                        const isPillBased = item.isPillBased || medicine?.isPillBased;
+                        const pillQuantity = item.pillQuantity || 0;
+                        const pillsPerStrip = item.pillsPerStrip || medicine?.pillsPerStrip || 1;
+                        const stripPrice = item.stripPrice || medicine?.stripPrice || 0;
+                        
+                        if (isPillBased) {
+                          const unitPrice = stripPrice / pillsPerStrip;
+                          const totalPrice = unitPrice * pillQuantity;
+                          return `
+                            <tr>
+                              <td>${item.name} (Pill-based)</td>
+                              <td>${pillQuantity} pills</td>
+                              <td>₨${unitPrice.toFixed(2)}/pill</td>
+                              <td>₨${totalPrice.toFixed(2)}</td>
+                            </tr>
+                          `;
+                        } else {
+                          return `
+                            <tr>
+                              <td>${item.name}</td>
+                              <td>${item.quantity}</td>
+                              <td>₨${item.price.toFixed(2)}</td>
+                              <td>₨${(item.price * item.quantity).toFixed(2)}</td>
+                            </tr>
+                          `;
+                        }
+                      }).join('')}
+                    </tbody>
+                  </table>
+                  
+                  <div class="totals">
+                    <div class="total-row">
+                      <span>Subtotal:</span>
+                      <span>₨${subtotal.toFixed(2)}</span>
+                    </div>
+                    <div class="total-row">
+                      <span>Tax (${tax}%):</span>
+                      <span>₨${taxAmount.toFixed(2)}</span>
+                    </div>
+                    <div class="total-row">
+                      <span>Discount:</span>
+                      <span>-₨${discount.toFixed(2)}</span>
+                    </div>
+                    <div class="total-row grand-total">
+                      <span>Grand Total:</span>
+                      <span>₨${grandTotal.toFixed(2)}</span>
+                    </div>
+                  </div>
+                  
+                  <div style="margin-top: 40px; text-align: center;">
+                    <p>Thank you for your purchase!</p>
+                    <p>Please visit again</p>
+                  </div>
+                </body>
+                </html>
+              `);
+              printWindow.document.close();
+              printWindow.print();
+            }
+          }
+        }, 1000);
 
       } else {
         throw new Error('Failed to save the bill');
@@ -340,58 +562,175 @@ export default function BillingPage() {
                 </Sheet>
             </div>
           </div>
-          <div className="grid gap-3">
-            <Label htmlFor="medicine">Add Medicine</Label>
-            <div className="flex gap-2">
-                <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
-                    <PopoverTrigger asChild>
-                        <Button
-                            variant="outline"
-                            role="combobox"
-                            aria-expanded={openCombobox}
-                            className="w-full justify-between"
-                        >
-                            {selectedMedicine
-                                ? medicines.find((med) => med.id === selectedMedicine)?.name
-                                : "Select a medicine to add"}
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                        <Command>
-                            <CommandInput placeholder="Search medicine..." />
-                            <CommandList>
-                                <CommandEmpty>No medicine found.</CommandEmpty>
-                                <CommandGroup>
-                                    {medicines.map((med) => (
-                                        <CommandItem
-                                            key={med.id}
-                                            value={med.name}
-                                            disabled={med.stock <= 0}
-                                            onSelect={() => {
-                                                setSelectedMedicine(med.id)
-                                                setOpenCombobox(false)
-                                            }}
-                                        >
-                                            <Check
-                                                className={cn(
-                                                    "mr-2 h-4 w-4",
-                                                    selectedMedicine === med.id ? "opacity-100" : "opacity-0"
-                                                )}
-                                            />
-                                            {med.name} (₹{med.price.toFixed(2)}) - Stock: {med.stock}
-                                        </CommandItem>
-                                    ))}
-                                </CommandGroup>
-                            </CommandList>
-                        </Command>
-                    </PopoverContent>
-                </Popover>
-              <Button onClick={handleAddItem} size="icon" variant="outline" aria-label="Add item">
-                <PlusCircle className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
+                     <div className="grid gap-3">
+             <div className="flex items-center justify-between">
+               <Label htmlFor="medicine">Add Medicine</Label>
+               <div className="flex items-center gap-2">
+                 <Button
+                   variant={showPillBasedOnly ? "default" : "outline"}
+                   size="sm"
+                   onClick={() => setShowPillBasedOnly(!showPillBasedOnly)}
+                   className="text-xs"
+                 >
+                   {showPillBasedOnly ? "Show All" : "Pill-based Only"}
+                 </Button>
+               </div>
+             </div>
+             <div className="flex gap-2">
+               <div className="relative flex-1 medicine-dropdown-container">
+                 <Input
+                   placeholder="Search medicines..."
+                   value={searchTerm}
+                   onChange={(e) => setSearchTerm(e.target.value)}
+                   onFocus={() => setShowMedicineList(true)}
+                   className="w-full"
+                 />
+                 
+                 {/* Medicine List Dropdown */}
+                 {showMedicineList && (
+                   <div className="absolute top-full left-0 right-0 z-50 mt-1 border rounded-md bg-white shadow-lg max-h-60 overflow-y-auto">
+                     {showPillBasedOnly && (
+                       <div className="p-2 bg-blue-50 border-b text-xs text-blue-700">
+                         Showing pill-based medicines only
+                       </div>
+                     )}
+                     {filteredMedicines.map((med) => (
+                       <div
+                         key={med.id}
+                         className="flex items-center justify-between p-3 border-b last:border-b-0 hover:bg-gray-50"
+                       >
+                         <div className="flex-1">
+                           <div className="flex items-center gap-2">
+                             <span className="font-medium">{med.name}</span>
+                             {med.isPillBased && (
+                               <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                                 Pill-based
+                               </span>
+                             )}
+                           </div>
+                           <div className="text-sm text-gray-500">
+                             {med.isPillBased ? (
+                               <>
+                                 ₨{med.stripPrice?.toFixed(2)}/strip ({med.pillsPerStrip} pills) - Stock: {med.stock} strips
+                               </>
+                             ) : (
+                               <>
+                                 ₨{med.price.toFixed(2)} - Stock: {med.stock}
+                               </>
+                             )}
+                           </div>
+                         </div>
+                         <div className="flex gap-2 ml-4">
+                           <Button
+                             size="sm"
+                             variant="outline"
+                             className="bg-green-500 hover:bg-green-600 text-white border-green-500 hover:border-green-600"
+                             onClick={() => {
+                               console.log('Add clicked for:', med.name);
+                               const existingItem = billItems.find(item => item.medicineId === med.id);
+                               
+                               if (med.isPillBased) {
+                                 // For pill-based medicines, add 1 pill by default
+                                 if (existingItem) {
+                                   if (existingItem.pillQuantity && existingItem.pillQuantity < (med.stock * (med.pillsPerStrip || 1))) {
+                                     setBillItems(
+                                       billItems.map(item =>
+                                         item.medicineId === med.id
+                                           ? { ...item, pillQuantity: (item.pillQuantity || 0) + 1 }
+                                           : item
+                                       )
+                                     );
+                                     toast({
+                                       title: 'Item Updated',
+                                       description: `Increased pill quantity of ${med.name}`,
+                                     });
+                                   } else {
+                                     toast({
+                                       title: 'Stock Limit Reached',
+                                       description: `You cannot add more pills than available in stock.`,
+                                       variant: 'destructive'
+                                     });
+                                   }
+                                 } else {
+                                   setBillItems([
+                                     ...billItems,
+                                     { 
+                                       medicineId: med.id, 
+                                       name: med.name, 
+                                       quantity: 1, 
+                                       price: med.price,
+                                       isPillBased: true,
+                                       pillsPerStrip: med.pillsPerStrip,
+                                       stripPrice: med.stripPrice,
+                                       pillQuantity: 1
+                                     },
+                                   ]);
+                                   toast({
+                                     title: 'Item Added',
+                                     description: `Added 1 pill of ${med.name} to the bill`,
+                                   });
+                                 }
+                               } else {
+                                 // For regular medicines
+                                 if (existingItem) {
+                                   if (existingItem.quantity < med.stock) {
+                                     setBillItems(
+                                       billItems.map(item =>
+                                         item.medicineId === med.id
+                                           ? { ...item, quantity: item.quantity + 1 }
+                                           : item
+                                       )
+                                     );
+                                     toast({
+                                       title: 'Item Updated',
+                                       description: `Increased quantity of ${med.name}`,
+                                     });
+                                   } else {
+                                     toast({
+                                       title: 'Stock Limit Reached',
+                                       description: `You cannot add more ${med.name} than is available in stock.`,
+                                       variant: 'destructive'
+                                     });
+                                   }
+                                 } else {
+                                   setBillItems([
+                                     ...billItems,
+                                     { medicineId: med.id, name: med.name, quantity: 1, price: med.price },
+                                   ]);
+                                   toast({
+                                     title: 'Item Added',
+                                     description: `Added ${med.name} to the bill`,
+                                   });
+                                 }
+                               }
+                               setShowMedicineList(false);
+                               setSearchTerm('');
+                             }}
+                             disabled={med.stock <= 0}
+                           >
+                             Add
+                           </Button>
+                         </div>
+                       </div>
+                     ))}
+                     {filteredMedicines.length === 0 && (
+                       <div className="p-3 text-center text-gray-500">
+                         {showPillBasedOnly ? "No pill-based medicines found" : "No medicines found"}
+                       </div>
+                     )}
+                   </div>
+                 )}
+               </div>
+               <Button 
+                 onClick={handleAddItem} 
+                 size="icon" 
+                 variant="outline" 
+                 aria-label="Add item"
+               >
+                 <PlusCircle className="h-4 w-4" />
+               </Button>
+             </div>
+           </div>
           <Separator />
           <div>
             <Table>
@@ -412,28 +751,81 @@ export default function BillingPage() {
                     </TableCell>
                   </TableRow>
                 )}
-                {billItems.map(item => (
-                  <TableRow key={item.medicineId}>
-                    <TableCell className="font-medium">{item.name}</TableCell>
-                    <TableCell>
-                      <Input 
-                        type="number" 
-                        value={item.quantity} 
-                        onChange={(e) => handleQuantityChange(item.medicineId, parseInt(e.target.value) || 0)}
-                        className="h-8 w-16"
-                        min="1"
-                        max={medicines.find(m => m.id === item.medicineId)?.stock}
-                      />
-                    </TableCell>
-                    <TableCell className="text-right">₹{item.price.toFixed(2)}</TableCell>
-                    <TableCell className="text-right">₹{(item.price * item.quantity).toFixed(2)}</TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.medicineId)}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {billItems.map(item => {
+                  const medicine = medicines.find(m => m.id === item.medicineId);
+                  const isPillBased = item.isPillBased || medicine?.isPillBased;
+                  const pillQuantity = item.pillQuantity || 0;
+                  const pillsPerStrip = item.pillsPerStrip || medicine?.pillsPerStrip || 1;
+                  const stripPrice = item.stripPrice || medicine?.stripPrice || 0;
+                  
+                  // Calculate price for pill-based medicines
+                  const unitPrice = isPillBased ? (stripPrice / pillsPerStrip) : item.price;
+                  const totalQuantity = isPillBased ? pillQuantity : item.quantity;
+                  const totalPrice = unitPrice * totalQuantity;
+                  
+                  return (
+                    <TableRow key={item.medicineId}>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          <span>{item.name}</span>
+                          {isPillBased && (
+                            <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                              Pill-based
+                            </span>
+                          )}
+                        </div>
+                        {isPillBased && (
+                          <div className="text-xs text-muted-foreground">
+                            {pillsPerStrip} pills/₨{stripPrice}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {isPillBased ? (
+                          <div className="flex flex-col gap-1">
+                            <Input 
+                              type="number" 
+                              value={pillQuantity} 
+                              onChange={(e) => handlePillQuantityChange(item.medicineId, parseInt(e.target.value) || 0)}
+                              className="h-8 w-20"
+                              min="1"
+                              max={medicine ? (medicine.stock * (medicine.pillsPerStrip || 1)) : 1000}
+                              placeholder="Pills"
+                            />
+                            <div className="text-xs text-muted-foreground">
+                              {Math.ceil(pillQuantity / pillsPerStrip)} strips needed
+                            </div>
+                          </div>
+                        ) : (
+                          <Input 
+                            type="number" 
+                            value={item.quantity} 
+                            onChange={(e) => handleQuantityChange(item.medicineId, parseInt(e.target.value) || 0)}
+                            className="h-8 w-16"
+                            min="1"
+                            max={medicine?.stock}
+                          />
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {isPillBased ? (
+                          <div className="text-xs">
+                            <div>₨{unitPrice.toFixed(2)}/pill</div>
+                            <div className="text-muted-foreground">₨{stripPrice}/strip</div>
+                          </div>
+                        ) : (
+                          `₨${item.price.toFixed(2)}`
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">₨{totalPrice.toFixed(2)}</TableCell>
+                      <TableCell>
+                        <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.medicineId)}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
@@ -447,7 +839,7 @@ export default function BillingPage() {
         <CardContent className="grid gap-4">
           <div className="flex justify-between">
             <span>Subtotal</span>
-            <span>₹{subtotal.toFixed(2)}</span>
+            <span>₨{subtotal.toFixed(2)}</span>
           </div>
            <div className="flex items-center justify-between">
             <Label htmlFor="tax" className='flex-1'>Tax (%)</Label>
@@ -455,16 +847,16 @@ export default function BillingPage() {
           </div>
           <div className="flex justify-between text-muted-foreground">
             <span>Tax Amount</span>
-            <span>+ ₹{taxAmount.toFixed(2)}</span>
+            <span>+ ₨{taxAmount.toFixed(2)}</span>
           </div>
           <div className="flex items-center justify-between">
-            <Label htmlFor="discount" className='flex-1'>Discount (₹)</Label>
+            <Label htmlFor="discount" className='flex-1'>Discount (₨)</Label>
             <Input id="discount" type="number" value={discount} onChange={e => setDiscount(Number(e.target.value))} className="h-8 w-24" />
           </div>
           <Separator />
           <div className="flex justify-between font-semibold text-lg">
             <span>Grand Total</span>
-            <span>₹{grandTotal.toFixed(2)}</span>
+            <span>₨{grandTotal.toFixed(2)}</span>
           </div>
         </CardContent>
         <CardFooter className="flex-col gap-2 items-stretch">
