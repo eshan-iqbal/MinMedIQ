@@ -73,6 +73,7 @@ export default function BillingPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<string>('');
+  const [paymentMethod, setPaymentMethod] = useState('cash');
   const [isCustomerSheetOpen, setIsCustomerSheetOpen] = useState(false);
   const { toast } = useToast();
 
@@ -240,6 +241,7 @@ export default function BillingPage() {
       taxAmount,
       discount,
       grandTotal,
+      paymentMethod,
       billDate: new Date().toISOString()
     };
 
@@ -260,6 +262,7 @@ export default function BillingPage() {
         setBillItems([]);
         setDiscount(0);
         setSelectedCustomer('');
+        setPaymentMethod('cash');
 
       } else {
         throw new Error('Failed to save the bill');
@@ -465,6 +468,20 @@ export default function BillingPage() {
           </div>
         </CardContent>
         <CardFooter className="flex-col gap-2 items-stretch">
+          <div className="flex items-center justify-between pb-2">
+            <Label htmlFor="payment-method" className='flex-1'>Payment Method</Label>
+            <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                <SelectTrigger id="payment-method" className="h-9 w-32">
+                    <SelectValue placeholder="Select method" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="cash">Cash</SelectItem>
+                    <SelectItem value="card">Card</SelectItem>
+                    <SelectItem value="upi">UPI</SelectItem>
+                    <SelectItem value="credit">Credit Sale</SelectItem>
+                </SelectContent>
+            </Select>
+          </div>
           <Button className="w-full" onClick={handleSaveBill}>Save Bill</Button>
           <Button className="w-full" variant="outline" onClick={() => window.print()}>
             <Printer className="mr-2 h-4 w-4" />
@@ -475,5 +492,3 @@ export default function BillingPage() {
     </div>
   );
 }
-
-    
