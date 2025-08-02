@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -362,10 +363,10 @@ export default function BillingPage() {
                                     {medicines.map((med) => (
                                         <CommandItem
                                             key={med.id}
-                                            value={med.id}
+                                            value={med.name}
                                             disabled={med.stock <= 0}
-                                            onSelect={(currentValue) => {
-                                                setSelectedMedicine(currentValue === selectedMedicine ? "" : currentValue)
+                                            onSelect={() => {
+                                                setSelectedMedicine(med.id)
                                                 setOpenCombobox(false)
                                             }}
                                         >
@@ -375,7 +376,7 @@ export default function BillingPage() {
                                                     selectedMedicine === med.id ? "opacity-100" : "opacity-0"
                                                 )}
                                             />
-                                            {med.name} (${med.price.toFixed(2)}) - Stock: {med.stock}
+                                            {med.name} (₹{med.price.toFixed(2)}) - Stock: {med.stock}
                                         </CommandItem>
                                     ))}
                                 </CommandGroup>
@@ -421,8 +422,8 @@ export default function BillingPage() {
                         max={medicines.find(m => m.id === item.medicineId)?.stock}
                       />
                     </TableCell>
-                    <TableCell className="text-right">${item.price.toFixed(2)}</TableCell>
-                    <TableCell className="text-right">${(item.price * item.quantity).toFixed(2)}</TableCell>
+                    <TableCell className="text-right">₹{item.price.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">₹{(item.price * item.quantity).toFixed(2)}</TableCell>
                     <TableCell>
                       <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.medicineId)}>
                         <Trash2 className="h-4 w-4 text-destructive" />
@@ -443,7 +444,7 @@ export default function BillingPage() {
         <CardContent className="grid gap-4">
           <div className="flex justify-between">
             <span>Subtotal</span>
-            <span>${subtotal.toFixed(2)}</span>
+            <span>₹{subtotal.toFixed(2)}</span>
           </div>
            <div className="flex items-center justify-between">
             <Label htmlFor="tax" className='flex-1'>Tax (%)</Label>
@@ -451,16 +452,16 @@ export default function BillingPage() {
           </div>
           <div className="flex justify-between text-muted-foreground">
             <span>Tax Amount</span>
-            <span>+ ${taxAmount.toFixed(2)}</span>
+            <span>+ ₹{taxAmount.toFixed(2)}</span>
           </div>
           <div className="flex items-center justify-between">
-            <Label htmlFor="discount" className='flex-1'>Discount ($)</Label>
+            <Label htmlFor="discount" className='flex-1'>Discount (₹)</Label>
             <Input id="discount" type="number" value={discount} onChange={e => setDiscount(Number(e.target.value))} className="h-8 w-24" />
           </div>
           <Separator />
           <div className="flex justify-between font-semibold text-lg">
             <span>Grand Total</span>
-            <span>${grandTotal.toFixed(2)}</span>
+            <span>₹{grandTotal.toFixed(2)}</span>
           </div>
         </CardContent>
         <CardFooter className="flex-col gap-2 items-stretch">
@@ -474,3 +475,5 @@ export default function BillingPage() {
     </div>
   );
 }
+
+    

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -115,7 +116,7 @@ export default function InventoryPage() {
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="price" className="text-right">
-                    Price ($)
+                    Price (₹)
                   </Label>
                   <Input id="price" type="number" placeholder="9.99" className="col-span-3" />
                 </div>
@@ -170,7 +171,7 @@ export default function InventoryPage() {
                       {item.stock < LOW_STOCK_THRESHOLD ? 'Low Stock' : 'In Stock'}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-right">${item.price.toFixed(2)}</TableCell>
+                  <TableCell className="text-right">₹{item.price.toFixed(2)}</TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -210,3 +211,5 @@ export default function InventoryPage() {
     </>
   );
 }
+
+    

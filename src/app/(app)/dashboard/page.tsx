@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -76,7 +77,7 @@ export default function Dashboard() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$45,231.89</div>
+            <div className="text-2xl font-bold">₹45,231.89</div>
             <p className="text-xs text-muted-foreground">
               +20.1% from last month
             </p>
@@ -147,7 +148,7 @@ export default function Dashboard() {
                       liam@example.com
                     </div>
                   </TableCell>
-                  <TableCell className="text-right">$250.00</TableCell>
+                  <TableCell className="text-right">₹250.00</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell>
@@ -156,7 +157,7 @@ export default function Dashboard() {
                       olivia@example.com
                     </div>
                   </TableCell>
-                  <TableCell className="text-right">$150.00</TableCell>
+                  <TableCell className="text-right">₹150.00</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell>
@@ -165,7 +166,7 @@ export default function Dashboard() {
                       noah@example.com
                     </div>
                   </TableCell>
-                  <TableCell className="text-right">$350.00</TableCell>
+                  <TableCell className="text-right">₹350.00</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell>
@@ -174,7 +175,7 @@ export default function Dashboard() {
                       emma@example.com
                     </div>
                   </TableCell>
-                  <TableCell className="text-right">$450.00</TableCell>
+                  <TableCell className="text-right">₹450.00</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell>
@@ -183,7 +184,7 @@ export default function Dashboard() {
                       liam@example.com
                     </div>
                   </TableCell>
-                  <TableCell className="text-right">$550.00</TableCell>
+                  <TableCell className="text-right">₹550.00</TableCell>
                 </TableRow>
               </TableBody>
             </Table>
@@ -220,3 +221,5 @@ export default function Dashboard() {
     </>
   );
 }
+
+    
