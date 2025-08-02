@@ -27,9 +27,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { PlusCircle, Printer, Trash2 } from 'lucide-react';
+import {
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetHeader,
+    SheetTitle,
+    SheetTrigger,
+    SheetFooter,
+    SheetClose
+} from '@/components/ui/sheet';
+import { PlusCircle, Printer, Trash2, UserPlus } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
+import { Textarea } from '@/components/ui/textarea';
 
 
 type Customer = {
@@ -59,7 +70,13 @@ export default function BillingPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<string>('');
+  const [isCustomerSheetOpen, setIsCustomerSheetOpen] = useState(false);
   const { toast } = useToast();
+
+  // New customer form state
+  const [newCustomerName, setNewCustomerName] = useState('');
+  const [newCustomerMobile, setNewCustomerMobile] = useState('');
+  const [newCustomerAddress, setNewCustomerAddress] = useState('');
 
   useEffect(() => {
     async function fetchData() {
@@ -82,6 +99,46 @@ export default function BillingPage() {
     }
     fetchData();
   }, [toast]);
+
+  const handleAddCustomer = async () => {
+    if(!newCustomerName || !newCustomerMobile) {
+        toast({ title: 'Error', description: 'Customer name and mobile are required.', variant: 'destructive' });
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/customers', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: newCustomerName, mobile: newCustomerMobile, address: newCustomerAddress }),
+        });
+
+        if (response.ok) {
+            const newCustomer = await response.json();
+            setCustomers(prev => [...prev, newCustomer]);
+            setSelectedCustomer(newCustomer.id);
+            toast({
+                title: 'Success',
+                description: `Customer ${newCustomer.name} added successfully.`,
+            });
+            // Reset form and close sheet
+            setNewCustomerName('');
+            setNewCustomerMobile('');
+            setNewCustomerAddress('');
+            setIsCustomerSheetOpen(false);
+        } else {
+            throw new Error('Failed to add customer');
+        }
+    } catch (error) {
+        console.error(error);
+        toast({
+            title: 'Error',
+            description: 'Something went wrong while adding the customer.',
+            variant: 'destructive'
+        });
+    }
+  };
+
 
   const handleAddItem = () => {
     if (!selectedMedicine) return;
@@ -222,18 +279,55 @@ export default function BillingPage() {
         <CardContent className="grid gap-6">
           <div className="grid gap-3">
             <Label htmlFor="customer">Customer</Label>
-            <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
-              <SelectTrigger id="customer" aria-label="Select customer">
-                <SelectValue placeholder="Select a customer" />
-              </SelectTrigger>
-              <SelectContent>
-                {customers.map(customer => (
-                  <SelectItem key={customer.id} value={customer.id}>
-                    {customer.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+             <div className="flex gap-2">
+                <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
+                  <SelectTrigger id="customer" aria-label="Select customer">
+                    <SelectValue placeholder="Select a customer" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {customers.map(customer => (
+                      <SelectItem key={customer.id} value={customer.id}>
+                        {customer.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                 <Sheet open={isCustomerSheetOpen} onOpenChange={setIsCustomerSheetOpen}>
+                    <SheetTrigger asChild>
+                        <Button size="icon" variant="outline" aria-label="Add customer">
+                            <UserPlus className="h-4 w-4" />
+                        </Button>
+                    </SheetTrigger>
+                    <SheetContent>
+                        <SheetHeader>
+                            <SheetTitle>Add New Customer</SheetTitle>
+                            <SheetDescription>
+                                Enter the details for the new customer.
+                            </SheetDescription>
+                        </SheetHeader>
+                        <div className="grid gap-4 py-4">
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="new-customer-name" className="text-right">Name</Label>
+                                <Input id="new-customer-name" value={newCustomerName} onChange={(e) => setNewCustomerName(e.target.value)} className="col-span-3" />
+                            </div>
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="new-customer-mobile" className="text-right">Mobile</Label>
+                                <Input id="new-customer-mobile" value={newCustomerMobile} onChange={(e) => setNewCustomerMobile(e.target.value)} className="col-span-3" />
+                            </div>
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="new-customer-address" className="text-right">Address</Label>
+                                <Textarea id="new-customer-address" value={newCustomerAddress} onChange={(e) => setNewCustomerAddress(e.target.value)} className="col-span-3" />
+                            </div>
+                        </div>
+                        <SheetFooter>
+                            <SheetClose asChild>
+                                <Button variant="outline">Cancel</Button>
+                            </SheetClose>
+                            <Button onClick={handleAddCustomer}>Add Customer</Button>
+                        </SheetFooter>
+                    </SheetContent>
+                </Sheet>
+            </div>
           </div>
           <div className="grid gap-3">
             <Label htmlFor="medicine">Add Medicine</Label>

@@ -26,3 +26,15 @@ const customersData = [
 export async function GET() {
   return NextResponse.json(customersData);
 }
+
+export async function POST(request: Request) {
+    const newCustomer = await request.json();
+    console.log('Received new customer:', newCustomer);
+    // In a real app, you would save to a database and get an ID
+    const customer = {
+        id: `C${Date.now()}`,
+        ...newCustomer
+    }
+    customersData.push(customer);
+    return NextResponse.json(customer, { status: 201 });
+}
