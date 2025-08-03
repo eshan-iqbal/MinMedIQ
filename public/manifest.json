@@ -1,0 +1,87 @@
+{
+  "name": "MinMedIQ Pharmacy",
+  "short_name": "MinMedIQ",
+  "description": "Complete pharmacy management system for medical stores",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0f172a",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "en",
+  "categories": ["business", "medical", "productivity"],
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "View pharmacy dashboard",
+      "url": "/dashboard",
+      "icons": [
+        {
+          "src": "/logo.png",
+          "sizes": "any"
+        }
+      ]
+    },
+    {
+      "name": "Billing",
+      "short_name": "Billing",
+      "description": "Create new bills",
+      "url": "/billing",
+      "icons": [
+        {
+          "src": "/logo.png",
+          "sizes": "any"
+        }
+      ]
+    },
+    {
+      "name": "Inventory",
+      "short_name": "Inventory",
+      "description": "Manage medicine inventory",
+      "url": "/inventory",
+      "icons": [
+        {
+          "src": "/logo.png",
+          "sizes": "any"
+        }
+      ]
+    },
+    {
+      "name": "Customers",
+      "short_name": "Customers",
+      "description": "Manage customer database",
+      "url": "/customers",
+      "icons": [
+        {
+          "src": "/logo.png",
+          "sizes": "any"
+        }
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/dashboard.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "MinMedIQ Dashboard"
+    },
+    {
+      "src": "/screenshots/billing.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Billing Interface"
+    }
+  ]
+} 

@@ -183,10 +183,26 @@ export class AuthService {
         const userData = { ...userWithoutPassword, _id: user._id.toString() };
         
         // Get user's subscription
-        const subscription = await db.collection('user_subscriptions').findOne({ userId: user._id.toString() });
+        const subscription = await db.collection('subscriptions').findOne({ userId: user._id.toString() });
+        console.log(`Checking subscription for user ${user.name} (${user._id.toString()}):`, subscription ? 'Found' : 'Not found');
+        
         if (subscription) {
+          console.log(`Subscription details for ${user.name}:`, {
+            planId: subscription.planId,
+            status: subscription.status,
+            startDate: subscription.startDate,
+            endDate: subscription.endDate,
+            billingCycle: subscription.billingCycle
+          });
+          
           // Get subscription plan details
           const plan = await db.collection('subscription_plans').findOne({ _id: subscription.planId });
+          console.log(`Plan details for ${user.name}:`, plan ? {
+            name: plan.name,
+            billingCycle: plan.billingCycle,
+            price: plan.price
+          } : 'Plan not found');
+          
           userData.subscription = {
             ...subscription,
             plan: plan ? {

@@ -172,7 +172,7 @@ export default function CustomersPage() {
                     <div className="text-sm text-muted-foreground">{customer.email}</div>
                   </TableCell>
                   <TableCell className='max-w-xs truncate'>{customer.address}</TableCell>
-                   <TableCell>₨{customer.creditLimit?.toFixed(2) ?? '0.00'}</TableCell>
+                                           <TableCell><span style={{fontFamily: 'Arial, sans-serif', fontWeight: 'bold'}}>₹</span>{customer.creditLimit?.toFixed(2) ?? '0.00'}</TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -329,7 +329,7 @@ function CustomerFormSheet({ open, onOpenChange, customer, onFormSubmit }: Custo
                         <Textarea id="address" value={formData.address} onChange={handleChange} className="col-span-3" />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="creditLimit" className="text-right">Credit Limit (₨)</Label>
+                        <Label htmlFor="creditLimit" className="text-right">Credit Limit (<span style={{fontFamily: 'Arial, sans-serif', fontWeight: 'bold'}}>₹</span>)</Label>
                         <Input id="creditLimit" type="number" value={formData.creditLimit} onChange={handleNumberChange} className="col-span-3" />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">

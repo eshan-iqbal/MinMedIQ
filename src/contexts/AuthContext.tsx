@@ -42,6 +42,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
+  isProfileLoading: boolean;
   fetchUserProfile: () => Promise<void>;
 }
 
@@ -51,10 +52,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isProfileLoading, setIsProfileLoading] = useState(false);
   const router = useRouter();
 
   const fetchUserProfile = async () => {
     try {
+      setIsProfileLoading(true);
       const token = localStorage.getItem('token');
       if (!token) return;
 
@@ -80,6 +83,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.error('Error fetching user profile:', error);
+    } finally {
+      setIsProfileLoading(false);
     }
   };
 
@@ -129,6 +134,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setToken(data.token);
       setUser(data.user);
 
+      // Immediately fetch updated profile with subscription data
+      await fetchUserProfile();
+
       // Redirect to dashboard
       router.push('/dashboard');
     } catch (error: any) {
@@ -155,6 +163,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     login,
     logout,
     isLoading,
+    isProfileLoading,
     fetchUserProfile,
   };
 

@@ -2,10 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 import { SubscriptionService } from '@/lib/subscription';
-import { requireAdmin } from '@/lib/middleware';
+import { requireAdmin, authenticateToken } from '@/lib/middleware';
 
 export async function GET(request: NextRequest) {
   try {
+    // Add authentication check
+    const authResult = await authenticateToken(request);
+    if (authResult instanceof NextResponse) {
+      return authResult;
+    }
+
     const plans = await SubscriptionService.getSubscriptionPlans();
     
     return NextResponse.json({

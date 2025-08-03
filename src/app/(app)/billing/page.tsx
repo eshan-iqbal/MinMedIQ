@@ -45,10 +45,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
 
 type Customer = {
   id: string;
   name: string;
+  address?: string;
+  phone?: string;
+  email?: string;
 };
 
 type Medicine = {
@@ -82,6 +86,7 @@ export default function BillingPage() {
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [isCustomerSheetOpen, setIsCustomerSheetOpen] = useState(false);
   const { toast } = useToast();
+  const { user: currentUser } = useAuth();
 
   // New customer form state
   const [newCustomerName, setNewCustomerName] = useState('');
@@ -385,40 +390,153 @@ export default function BillingPage() {
                 <!DOCTYPE html>
                 <html>
                 <head>
-                  <title>Bill ${result.billNumber}</title>
+                  <title>Tax Invoice - ${result.billNumber}</title>
                   <style>
-                    body { font-family: Arial, sans-serif; margin: 20px; }
-                    .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
-                    .bill-info { margin-bottom: 20px; }
-                    .items-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-                    .items-table th, .items-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-                    .items-table th { background-color: #f2f2f2; }
-                    .totals { margin-top: 20px; }
-                    .total-row { display: flex; justify-content: space-between; margin: 5px 0; }
-                    .grand-total { font-weight: bold; font-size: 18px; border-top: 2px solid #000; padding-top: 10px; }
-                    @media print { body { margin: 0; } }
+                    body { 
+                      font-family: Arial, sans-serif; 
+                      margin: 20px; 
+                      font-size: 12px;
+                      line-height: 1.4;
+                    }
+                    .header { 
+                      display: flex; 
+                      justify-content: space-between; 
+                      border-bottom: 2px solid #000; 
+                      padding-bottom: 15px; 
+                      margin-bottom: 20px; 
+                    }
+                    .store-info { 
+                      text-align: left; 
+                      flex: 1;
+                    }
+                    .invoice-info { 
+                      text-align: right; 
+                      flex: 1;
+                    }
+                    .store-name { 
+                      font-size: 24px; 
+                      font-weight: bold; 
+                      margin-bottom: 5px;
+                      color: #1f2937;
+                    }
+                    .store-details { 
+                      font-size: 11px; 
+                      color: #6b7280;
+                      margin-bottom: 10px;
+                    }
+                    .invoice-title { 
+                      font-size: 18px; 
+                      font-weight: bold; 
+                      margin-bottom: 10px;
+                      color: #1f2937;
+                    }
+                    .invoice-details { 
+                      font-size: 11px; 
+                      color: #6b7280;
+                    }
+                    .customer-info { 
+                      margin-bottom: 20px; 
+                      padding: 15px;
+                      background-color: #f9fafb;
+                      border-radius: 5px;
+                    }
+                    .items-table { 
+                      width: 100%; 
+                      border-collapse: collapse; 
+                      margin-bottom: 20px; 
+                      font-size: 11px;
+                    }
+                    .items-table th, .items-table td { 
+                      border: 1px solid #d1d5db; 
+                      padding: 8px; 
+                      text-align: left; 
+                    }
+                    .items-table th { 
+                      background-color: #f3f4f6; 
+                      font-weight: bold;
+                      color: #374151;
+                    }
+                    .totals { 
+                      margin-top: 20px; 
+                      border-top: 2px solid #d1d5db;
+                      padding-top: 15px;
+                    }
+                    .total-row { 
+                      display: flex; 
+                      justify-content: space-between; 
+                      margin: 5px 0; 
+                      font-size: 12px;
+                    }
+                    .grand-total { 
+                      font-weight: bold; 
+                      font-size: 16px; 
+                      border-top: 2px solid #000; 
+                      padding-top: 10px; 
+                      margin-top: 10px;
+                    }
+                    .footer { 
+                      margin-top: 30px; 
+                      text-align: center; 
+                      font-size: 10px;
+                      color: #6b7280;
+                      border-top: 1px solid #d1d5db;
+                      padding-top: 15px;
+                    }
+                    .user-info {
+                      font-size: 10px;
+                      color: #6b7280;
+                      margin-top: 5px;
+                    }
+                    @media print { 
+                      body { margin: 0; } 
+                      .header { page-break-inside: avoid; }
+                      .items-table { page-break-inside: avoid; }
+                    }
                   </style>
                 </head>
                 <body>
                   <div class="header">
-                    <h1>MinMedIQ Pharmacy</h1>
-                    <p>Medical Store & Pharmacy</p>
-                    <p>Bill ${result.billNumber}</p>
+                    <div class="store-info">
+                      <div class="store-name">${currentUser?.shopName || 'MinMedIQ Pharmacy'}</div>
+                      <div class="store-details">
+                        ${currentUser?.shopAddress || 'Medical Store & Pharmacy'}<br>
+                        ${currentUser?.phone ? `Tel: ${currentUser.phone}` : 'Tel: (021) 508-9888'}<br>
+                        ${currentUser?.email || 'Email: info@minmediq.com'}<br>
+                        GST Number: 4212345678<br>
+                        (All amounts are GST inclusive)
+                      </div>
+                      <div class="user-info">
+                        Generated by: ${currentUser?.name || 'System User'}<br>
+                        Date: ${new Date().toLocaleDateString()}<br>
+                        Time: ${new Date().toLocaleTimeString()}
+                      </div>
+                    </div>
+                    <div class="invoice-info">
+                      <div class="invoice-title">TAX INVOICE</div>
+                      <div class="invoice-details">
+                        Invoice No: ${result.billNumber}<br>
+                        Date: ${new Date().toLocaleDateString()}<br>
+                        Payment Method: ${paymentMethod.toUpperCase()}<br>
+                        Customer ID: ${customer?.id || 'N/A'}
+                      </div>
+                    </div>
                   </div>
                   
-                  <div class="bill-info">
-                    <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
-                    <p><strong>Customer:</strong> ${customer?.name || 'Unknown'}</p>
-                    <p><strong>Payment Method:</strong> ${paymentMethod}</p>
+                  <div class="customer-info">
+                    <strong>Bill To:</strong><br>
+                    <strong>${customer?.name || 'Unknown Customer'}</strong><br>
+                    ${customer?.address || 'Address not provided'}<br>
+                    ${customer?.phone ? `Phone: ${customer.phone}` : ''}<br>
+                    ${customer?.email ? `Email: ${customer.email}` : ''}
                   </div>
                   
                   <table class="items-table">
                     <thead>
                       <tr>
-                        <th>Item</th>
-                        <th>Qty</th>
-                        <th>Price</th>
-                        <th>Total</th>
+                        <th style="width: 40%;">Description</th>
+                        <th style="width: 15%; text-align: center;">Quantity</th>
+                        <th style="width: 20%; text-align: right;">Unit Price</th>
+                        <th style="width: 25%; text-align: right;">Amount</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -434,19 +552,19 @@ export default function BillingPage() {
                           const totalPrice = unitPrice * pillQuantity;
                           return `
                             <tr>
-                              <td>${item.name} (Pill-based)</td>
-                              <td>${pillQuantity} pills</td>
-                              <td>₨${unitPrice.toFixed(2)}/pill</td>
-                              <td>₨${totalPrice.toFixed(2)}</td>
+                              <td>${item.name}<br><small style="color: #6b7280;">(Pill-based medicine)</small></td>
+                              <td style="text-align: center;">${pillQuantity} pills</td>
+                              <td style="text-align: right;">₹${unitPrice.toFixed(2)}/pill</td>
+                              <td style="text-align: right;">₹${totalPrice.toFixed(2)}</td>
                             </tr>
                           `;
                         } else {
                           return `
                             <tr>
                               <td>${item.name}</td>
-                              <td>${item.quantity}</td>
-                              <td>₨${item.price.toFixed(2)}</td>
-                              <td>₨${(item.price * item.quantity).toFixed(2)}</td>
+                              <td style="text-align: center;">${item.quantity}</td>
+                              <td style="text-align: right;">₹${item.price.toFixed(2)}</td>
+                              <td style="text-align: right;">₹${(item.price * item.quantity).toFixed(2)}</td>
                             </tr>
                           `;
                         }
@@ -457,25 +575,30 @@ export default function BillingPage() {
                   <div class="totals">
                     <div class="total-row">
                       <span>Subtotal:</span>
-                      <span>₨${subtotal.toFixed(2)}</span>
+                      <span>₹${subtotal.toFixed(2)}</span>
                     </div>
                     <div class="total-row">
-                      <span>Tax (${tax}%):</span>
-                      <span>₨${taxAmount.toFixed(2)}</span>
+                      <span>GST (${tax}%):</span>
+                      <span>₹${taxAmount.toFixed(2)}</span>
                     </div>
                     <div class="total-row">
                       <span>Discount:</span>
-                      <span>-₨${discount.toFixed(2)}</span>
+                      <span>-₹${discount.toFixed(2)}</span>
                     </div>
                     <div class="total-row grand-total">
-                      <span>Grand Total:</span>
-                      <span>₨${grandTotal.toFixed(2)}</span>
+                      <span>Total Amount:</span>
+                      <span>₹${grandTotal.toFixed(2)}</span>
                     </div>
                   </div>
                   
-                  <div style="margin-top: 40px; text-align: center;">
-                    <p>Thank you for your purchase!</p>
-                    <p>Please visit again</p>
+                  <div class="footer">
+                    <p><strong>Thank you for choosing ${currentUser?.shopName || 'MinMedIQ Pharmacy'}!</strong></p>
+                    <p>For any queries, please contact us at ${currentUser?.phone || '(021) 508-9888'}</p>
+                    <p>This is a computer generated invoice. No signature required.</p>
+                    <p style="margin-top: 10px; font-size: 9px; color: #9ca3af;">
+                      Generated on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}<br>
+                      Invoice processed by: ${currentUser?.name || 'System User'}
+                    </p>
                   </div>
                 </body>
                 </html>
@@ -611,11 +734,11 @@ export default function BillingPage() {
                            <div className="text-sm text-gray-500">
                              {med.isPillBased ? (
                                <>
-                                 ₨{med.stripPrice?.toFixed(2)}/strip ({med.pillsPerStrip} pills) - Stock: {med.stock} strips
+                                 <span style={{fontFamily: 'Arial, sans-serif', fontWeight: 'bold'}}>₹</span>{med.stripPrice?.toFixed(2)}/strip ({med.pillsPerStrip} pills) - Stock: {med.stock} strips
                                </>
                              ) : (
                                <>
-                                 ₨{med.price.toFixed(2)} - Stock: {med.stock}
+                                 <span style={{fontFamily: 'Arial, sans-serif', fontWeight: 'bold'}}>₹</span>{med.price.toFixed(2)} - Stock: {med.stock}
                                </>
                              )}
                            </div>
@@ -776,7 +899,7 @@ export default function BillingPage() {
                         </div>
                         {isPillBased && (
                           <div className="text-xs text-muted-foreground">
-                            {pillsPerStrip} pills/₨{stripPrice}
+                            {pillsPerStrip} pills/<span style={{fontFamily: 'Arial, sans-serif', fontWeight: 'bold'}}>₹</span>{stripPrice}
                           </div>
                         )}
                       </TableCell>
@@ -810,14 +933,16 @@ export default function BillingPage() {
                       <TableCell className="text-right">
                         {isPillBased ? (
                           <div className="text-xs">
-                            <div>₨{unitPrice.toFixed(2)}/pill</div>
-                            <div className="text-muted-foreground">₨{stripPrice}/strip</div>
+                                                    <div><span style={{fontFamily: 'Arial, sans-serif', fontWeight: 'bold'}}>₹</span>{unitPrice.toFixed(2)}/pill</div>
+                        <div className="text-muted-foreground"><span style={{fontFamily: 'Arial, sans-serif', fontWeight: 'bold'}}>₹</span>{stripPrice}/strip</div>
                           </div>
                         ) : (
-                          `₨${item.price.toFixed(2)}`
+                                                      `<span style={{fontFamily: 'Arial, sans-serif', fontWeight: 'bold'}}>₹</span>${item.price.toFixed(2)}`
                         )}
                       </TableCell>
-                      <TableCell className="text-right">₨{totalPrice.toFixed(2)}</TableCell>
+                      <TableCell className="text-right">
+                        <span style={{fontFamily: 'Arial, sans-serif', fontWeight: 'bold'}}>₹</span>{totalPrice.toFixed(2)}
+                      </TableCell>
                       <TableCell>
                         <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.medicineId)}>
                           <Trash2 className="h-4 w-4 text-destructive" />
@@ -839,7 +964,7 @@ export default function BillingPage() {
         <CardContent className="grid gap-4">
           <div className="flex justify-between">
             <span>Subtotal</span>
-            <span>₨{subtotal.toFixed(2)}</span>
+                                <span><span style={{fontFamily: 'Arial, sans-serif', fontWeight: 'bold'}}>₹</span>{subtotal.toFixed(2)}</span>
           </div>
            <div className="flex items-center justify-between">
             <Label htmlFor="tax" className='flex-1'>Tax (%)</Label>
@@ -847,16 +972,16 @@ export default function BillingPage() {
           </div>
           <div className="flex justify-between text-muted-foreground">
             <span>Tax Amount</span>
-            <span>+ ₨{taxAmount.toFixed(2)}</span>
+                          <span>+ <span style={{fontFamily: 'Arial, sans-serif', fontWeight: 'bold'}}>₹</span>{taxAmount.toFixed(2)}</span>
           </div>
           <div className="flex items-center justify-between">
-            <Label htmlFor="discount" className='flex-1'>Discount (₨)</Label>
+                            <Label htmlFor="discount" className='flex-1'>Discount (<span style={{fontFamily: 'Arial, sans-serif', fontWeight: 'bold'}}>₹</span>)</Label>
             <Input id="discount" type="number" value={discount} onChange={e => setDiscount(Number(e.target.value))} className="h-8 w-24" />
           </div>
           <Separator />
           <div className="flex justify-between font-semibold text-lg">
             <span>Grand Total</span>
-            <span>₨{grandTotal.toFixed(2)}</span>
+                                <span><span style={{fontFamily: 'Arial, sans-serif', fontWeight: 'bold'}}>₹</span>{grandTotal.toFixed(2)}</span>
           </div>
         </CardContent>
         <CardFooter className="flex-col gap-2 items-stretch">

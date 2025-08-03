@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, UserPlus, Users, Building2, CreditCard, Eye, Settings } from 'lucide-react';
+import { Plus, Edit, Trash2, UserPlus, Users, Building2, CreditCard, Eye, Settings, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -40,6 +40,8 @@ import {
 } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface SubscriptionPlan {
   _id: string;
@@ -86,6 +88,10 @@ export default function UsersPage() {
   const [isSubscriptionDialogOpen, setIsSubscriptionDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [selectedPlanId, setSelectedPlanId] = useState('');
+  const [isAssigningSubscription, setIsAssigningSubscription] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const { toast } = useToast();
+  const { fetchUserProfile, user: currentUser } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     name: '',
@@ -103,6 +109,7 @@ export default function UsersPage() {
 
   const fetchUsers = async () => {
     try {
+      console.log('Fetching users...');
       const token = localStorage.getItem('token');
       const response = await fetch('/api/auth/users', {
         headers: {
@@ -110,13 +117,28 @@ export default function UsersPage() {
         },
       });
 
+      console.log('Users response status:', response.status);
+
       if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Failed to fetch users:', errorData);
         throw new Error('Failed to fetch users');
       }
 
       const data = await response.json();
+      console.log('Users data:', data);
+      console.log('Users with subscriptions:', data.users.map((user: any) => ({
+        name: user.name,
+        subscription: user.subscription ? {
+          plan: user.subscription.plan?.name,
+          status: user.subscription.status,
+          startDate: user.subscription.startDate,
+          endDate: user.subscription.endDate
+        } : null
+      })));
       setUsers(data.users);
     } catch (error: any) {
+      console.error('Fetch users error:', error);
       setError(error.message);
     } finally {
       setIsLoading(false);
@@ -126,14 +148,23 @@ export default function UsersPage() {
   const fetchSubscriptionPlans = async () => {
     try {
       const token = localStorage.getItem('token');
+      console.log('Fetching subscription plans with token:', token ? 'present' : 'missing');
+      
       const response = await fetch('/api/subscriptions/plans', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
+      
+      console.log('Subscription plans response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('Subscription plans data:', data);
         setSubscriptionPlans(data.plans);
+      } else {
+        const errorData = await response.json();
+        console.error('Failed to fetch subscription plans:', errorData);
       }
     } catch (error) {
       console.error('Failed to fetch subscription plans:', error);
@@ -220,8 +251,19 @@ export default function UsersPage() {
   const handleAssignSubscription = async () => {
     if (!selectedUser || !selectedPlanId) return;
 
+    setIsAssigningSubscription(true);
     try {
+      console.log('Assigning subscription:', {
+        userId: selectedUser._id,
+        planId: selectedPlanId,
+        userName: selectedUser.name
+      });
+
       const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
       const response = await fetch('/api/subscriptions/assign', {
         method: 'POST',
         headers: {
@@ -235,17 +277,85 @@ export default function UsersPage() {
         }),
       });
 
+      const data = await response.json();
+      console.log('Subscription assignment response:', data);
+
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to assign subscription');
+        throw new Error(data.error || data.details || 'Failed to assign subscription');
       }
 
+      console.log('Subscription assigned successfully');
+      console.log('Response data:', data);
       setIsSubscriptionDialogOpen(false);
       setSelectedPlanId('');
       setSelectedUser(null);
-      fetchUsers();
+      
+      // Immediately refresh the current user's profile if they assigned a subscription to themselves
+      if (selectedUser && selectedUser._id === currentUser?.id) {
+        console.log('Immediately refreshing current user profile...');
+        await fetchUserProfile();
+      }
+      
+      // Force refresh users data with a small delay to ensure DB update
+      setTimeout(async () => {
+        console.log('First refresh after subscription assignment...');
+        try {
+          await fetchUsers();
+          // Also refresh the current user's profile if they assigned a subscription to themselves
+          if (selectedUser && selectedUser._id === currentUser?.id) {
+            console.log('Refreshing current user profile...');
+            await fetchUserProfile();
+          }
+          console.log('First refresh completed');
+        } catch (error) {
+          console.error('First refresh error:', error);
+        }
+      }, 1000); // Increased delay to ensure DB update
+      
+      // Additional refresh for better UX
+      setTimeout(async () => {
+        console.log('Second refresh to ensure UI is updated...');
+        try {
+          await fetchUsers();
+          if (selectedUser && selectedUser._id === currentUser?.id) {
+            await fetchUserProfile();
+          }
+          console.log('Second refresh completed');
+        } catch (error) {
+          console.error('Second refresh error:', error);
+        }
+      }, 2000);
+      
+      // Final refresh to ensure everything is updated
+      setTimeout(async () => {
+        console.log('Final refresh to ensure all data is current...');
+        try {
+          await fetchUsers();
+          if (selectedUser && selectedUser._id === currentUser?.id) {
+            await fetchUserProfile();
+          }
+          console.log('Final refresh completed');
+        } catch (error) {
+          console.error('Final refresh error:', error);
+        }
+      }, 3000);
+      
+      // Show success message
+      setError(''); // Clear any existing errors
+      toast({
+        title: 'Success',
+        description: `Subscription assigned successfully to ${selectedUser.name}. The data will refresh automatically.`,
+      });
     } catch (error: any) {
+      console.error('Subscription assignment error:', error);
       setError(error.message);
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsAssigningSubscription(false);
     }
   };
 
@@ -341,111 +451,142 @@ export default function UsersPage() {
             Manage users, their roles, shop information, and subscriptions
           </p>
         </div>
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <UserPlus className="mr-2 h-4 w-4" />
-              Add User
+                 <div className="flex gap-2">
+           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+             <DialogTrigger asChild>
+               <Button>
+                 <UserPlus className="mr-2 h-4 w-4" />
+                 Add User
+               </Button>
+             </DialogTrigger>
+             <DialogContent className="max-w-2xl">
+               <DialogHeader>
+                 <DialogTitle>Create New User</DialogTitle>
+                 <DialogDescription>
+                   Add a new user to the system with shop information. Only admins can create new users.
+                 </DialogDescription>
+               </DialogHeader>
+               <form onSubmit={handleCreateUser} className="space-y-4">
+                 <div className="grid grid-cols-2 gap-4">
+                   <div className="space-y-2">
+                     <Label htmlFor="email">Email</Label>
+                     <Input
+                       id="email"
+                       type="email"
+                       value={formData.email}
+                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                       required
+                     />
+                   </div>
+                   <div className="space-y-2">
+                     <Label htmlFor="name">Full Name</Label>
+                     <Input
+                       id="name"
+                       value={formData.name}
+                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                       required
+                     />
+                   </div>
+                 </div>
+                 <div className="grid grid-cols-2 gap-4">
+                   <div className="space-y-2">
+                     <Label htmlFor="password">Password</Label>
+                     <Input
+                       id="password"
+                       type="password"
+                       value={formData.password}
+                       onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                       required
+                     />
+                   </div>
+                   <div className="space-y-2">
+                     <Label htmlFor="role">Role</Label>
+                     <Select
+                       value={formData.role}
+                       onValueChange={(value) => setFormData({ ...formData, role: value as any })}
+                     >
+                       <SelectTrigger>
+                         <SelectValue />
+                       </SelectTrigger>
+                       <SelectContent>
+                         <SelectItem value="admin">Admin</SelectItem>
+                         <SelectItem value="chemist">Chemist</SelectItem>
+                         <SelectItem value="drugist">Drugist</SelectItem>
+                       </SelectContent>
+                     </Select>
+                   </div>
+                 </div>
+                 <div className="space-y-2">
+                   <Label htmlFor="shopName">Shop Name</Label>
+                   <Input
+                     id="shopName"
+                     value={formData.shopName}
+                     onChange={(e) => setFormData({ ...formData, shopName: e.target.value })}
+                     placeholder="Enter shop/pharmacy name"
+                   />
+                 </div>
+                 <div className="space-y-2">
+                   <Label htmlFor="shopAddress">Shop Address</Label>
+                   <Textarea
+                     id="shopAddress"
+                     value={formData.shopAddress}
+                     onChange={(e) => setFormData({ ...formData, shopAddress: e.target.value })}
+                     placeholder="Enter shop address"
+                     rows={3}
+                   />
+                 </div>
+                 <div className="space-y-2">
+                   <Label htmlFor="phone">Phone Number</Label>
+                   <Input
+                     id="phone"
+                     value={formData.phone}
+                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                     placeholder="Enter phone number"
+                   />
+                 </div>
+                 <div className="flex justify-end space-x-2">
+                   <Button
+                     type="button"
+                     variant="outline"
+                     onClick={() => setIsCreateDialogOpen(false)}
+                   >
+                     Cancel
+                   </Button>
+                   <Button type="submit">Create User</Button>
+                 </div>
+               </form>
+             </DialogContent>
+           </Dialog>
+                       <Button 
+              variant="outline" 
+              disabled={isRefreshing}
+              onClick={async () => {
+                setIsRefreshing(true);
+                console.log('Manual refresh triggered...');
+                try {
+                  await fetchUsers();
+                  await fetchUserProfile();
+                  console.log('Manual refresh completed');
+                  toast({
+                    title: 'Success',
+                    description: 'Data refreshed successfully',
+                  });
+                } catch (error) {
+                  console.error('Manual refresh error:', error);
+                  toast({
+                    title: 'Error',
+                    description: 'Failed to refresh data',
+                    variant: 'destructive',
+                  });
+                } finally {
+                  setIsRefreshing(false);
+                }
+              }}
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              {isRefreshing ? 'Refreshing...' : 'Refresh'}
             </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Create New User</DialogTitle>
-              <DialogDescription>
-                Add a new user to the system with shop information. Only admins can create new users.
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleCreateUser} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="role">Role</Label>
-                  <Select
-                    value={formData.role}
-                    onValueChange={(value) => setFormData({ ...formData, role: value as any })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="chemist">Chemist</SelectItem>
-                      <SelectItem value="drugist">Drugist</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="shopName">Shop Name</Label>
-                <Input
-                  id="shopName"
-                  value={formData.shopName}
-                  onChange={(e) => setFormData({ ...formData, shopName: e.target.value })}
-                  placeholder="Enter shop/pharmacy name"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="shopAddress">Shop Address</Label>
-                <Textarea
-                  id="shopAddress"
-                  value={formData.shopAddress}
-                  onChange={(e) => setFormData({ ...formData, shopAddress: e.target.value })}
-                  placeholder="Enter shop address"
-                  rows={3}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number</Label>
-                <Input
-                  id="phone"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  placeholder="Enter phone number"
-                />
-              </div>
-              <div className="flex justify-end space-x-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsCreateDialogOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit">Create User</Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+         </div>
       </div>
 
       {error && (
@@ -691,7 +832,7 @@ export default function UsersPage() {
                           </div>
                           <div>
                             <span className="text-sm font-medium">Price:</span>
-                            <p className="text-sm">₨{selectedUser.subscription.plan?.price}/{selectedUser.subscription.plan?.billingCycle}</p>
+                            <p className="text-sm"><span style={{fontFamily: 'Arial, sans-serif', fontWeight: 'bold'}}>₹</span>{selectedUser.subscription.plan?.price}/{selectedUser.subscription.plan?.billingCycle}</p>
                           </div>
                           <div>
                             <span className="text-sm font-medium">Start Date:</span>
@@ -743,7 +884,7 @@ export default function UsersPage() {
               <SelectContent>
                 {subscriptionPlans.map((plan) => (
                   <SelectItem key={plan._id} value={plan._id}>
-                    {plan.name} - ₨{plan.price}/{plan.billingCycle}
+                                            {plan.name} - <span style={{fontFamily: 'Arial, sans-serif', fontWeight: 'bold'}}>₹</span>{plan.price}/{plan.billingCycle}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -755,9 +896,12 @@ export default function UsersPage() {
               >
                 Cancel
               </Button>
-              <Button onClick={handleAssignSubscription} disabled={!selectedPlanId}>
-                Assign Subscription
-              </Button>
+                             <Button 
+                 onClick={handleAssignSubscription} 
+                 disabled={!selectedPlanId || isAssigningSubscription}
+               >
+                 {isAssigningSubscription ? 'Assigning...' : 'Assign Subscription'}
+               </Button>
             </div>
           </div>
         </DialogContent>

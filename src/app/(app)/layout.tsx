@@ -16,6 +16,8 @@ import {
   Calendar,
   Crown,
   ChevronDown,
+  Loader2,
+  Clock,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -40,7 +42,7 @@ export default function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, logout } = useAuth();
+  const { user, logout, isProfileLoading } = useAuth();
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
@@ -50,6 +52,34 @@ export default function AppLayout({
 
     return () => clearInterval(timer);
   }, []);
+
+  // Helper function to format subscription end date
+  const formatSubscriptionEndDate = (endDate: string) => {
+    try {
+      const date = new Date(endDate);
+      const now = new Date();
+      const diffTime = date.getTime() - now.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (diffDays < 0) {
+        return 'Expired';
+      } else if (diffDays === 0) {
+        return 'Expires today';
+      } else if (diffDays === 1) {
+        return 'Expires tomorrow';
+      } else if (diffDays <= 7) {
+        return `Expires in ${diffDays} days`;
+      } else {
+        return date.toLocaleDateString('en-US', { 
+          year: 'numeric', 
+          month: 'short', 
+          day: 'numeric' 
+        });
+      }
+    } catch (error) {
+      return 'Invalid date';
+    }
+  };
   
   const navItems = [
     { href: '/dashboard', icon: IndianRupee, label: 'Dashboard' },
@@ -66,7 +96,7 @@ export default function AppLayout({
       <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
         <div className="hidden border-r bg-card md:block">
           <div className="flex h-full max-h-screen flex-col gap-2">
-            <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
+            <div className="flex h-16 items-center border-b px-4 lg:h-[72px] lg:px-6">
               <Link href="/" className="flex items-center gap-2 font-semibold">
                 <Logo className="h-6 w-6 text-primary" />
                 <span className="">MinMedIQ</span>
@@ -89,7 +119,7 @@ export default function AppLayout({
           </div>
         </div>
         <div className="flex flex-col">
-          <header className="flex h-14 items-center gap-4 border-b bg-card px-4 lg:h-[60px] lg:px-6">
+          <header className="flex h-16 items-center gap-4 border-b bg-card px-4 lg:h-[72px] lg:px-6">
             <Sheet>
               <SheetTrigger asChild>
                 <Button
@@ -134,8 +164,8 @@ export default function AppLayout({
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex items-center gap-3 px-4 py-2 h-auto hover:bg-accent/50 transition-colors">
-                  <Avatar className="h-9 w-9 ring-2 ring-primary/10">
+                <Button variant="ghost" className="flex items-center gap-3 px-4 py-3 h-auto hover:bg-accent/50 transition-colors">
+                  <Avatar className="h-10 w-10 ring-2 ring-primary/10">
                     <AvatarImage src="https://placehold.co/100x100" alt="User" />
                     <AvatarFallback className="bg-primary/10 text-primary font-semibold">
                       {user?.name?.charAt(0).toUpperCase() || 'U'}
@@ -152,11 +182,23 @@ export default function AppLayout({
                       <span className="text-xs text-muted-foreground truncate w-full">{user.shopName}</span>
                     )}
                     <div className="flex items-center gap-2 mt-0.5">
-                      {user?.subscription?.plan?.name && (
-                        <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                          {user.subscription.plan.name.charAt(0).toUpperCase() + user.subscription.plan.name.slice(1)}
-                        </span>
-                      )}
+                      {isProfileLoading ? (
+                        <div className="flex items-center gap-1">
+                          <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                          <span className="text-xs text-muted-foreground">Loading subscription...</span>
+                        </div>
+                      ) : user?.subscription?.plan?.name ? (
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                            {user.subscription.plan.name.charAt(0).toUpperCase() + user.subscription.plan.name.slice(1)}
+                          </span>
+                          {user?.subscription?.endDate && (
+                            <span className="text-xs text-muted-foreground">
+                              • {formatSubscriptionEndDate(user.subscription.endDate)}
+                            </span>
+                          )}
+                        </div>
+                      ) : null}
                       <span className="text-xs text-muted-foreground capitalize">{user?.role}</span>
                     </div>
                   </div>
@@ -177,6 +219,9 @@ export default function AppLayout({
                        <span className="font-semibold truncate">{user?.name || 'User'}</span>
                        {user?.subscription?.plan?.name === 'premium' && (
                          <Crown className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                       )}
+                       {isProfileLoading && (
+                         <Loader2 className="h-3 w-3 animate-spin text-primary" />
                        )}
                      </div>
                      <span className="text-sm text-muted-foreground truncate">{user?.email}</span>
@@ -208,15 +253,34 @@ export default function AppLayout({
                      <CreditCard className="h-4 w-4 text-green-600 dark:text-green-400" />
                    </div>
                    <div className="flex flex-col flex-1 min-w-0">
-                     <span className="text-sm font-medium">
-                       {user?.subscription?.plan?.name ? 
-                         `${user.subscription.plan.name.charAt(0).toUpperCase() + user.subscription.plan.name.slice(1)} Plan` : 
-                         'No Subscription'
-                       }
-                     </span>
-                     <span className="text-xs text-muted-foreground">
-                       {user?.subscription?.status || 'No active subscription'}
-                     </span>
+                     {isProfileLoading ? (
+                       <div className="flex items-center gap-2">
+                         <Loader2 className="h-3 w-3 animate-spin text-green-600" />
+                         <span className="text-sm font-medium">Loading subscription...</span>
+                       </div>
+                     ) : (
+                       <>
+                         <span className="text-sm font-medium">
+                           {user?.subscription?.plan?.name ? 
+                             `${user.subscription.plan.name.charAt(0).toUpperCase() + user.subscription.plan.name.slice(1)} Plan` : 
+                             'No Subscription'
+                           }
+                         </span>
+                         <div className="flex flex-col gap-1 mt-1">
+                           <span className="text-xs text-muted-foreground">
+                             {user?.subscription?.status || 'No active subscription'}
+                           </span>
+                           {user?.subscription?.endDate && (
+                             <div className="flex items-center gap-1">
+                               <Clock className="h-3 w-3 text-muted-foreground" />
+                               <span className="text-xs text-muted-foreground">
+                                 {formatSubscriptionEndDate(user.subscription.endDate)}
+                               </span>
+                             </div>
+                           )}
+                         </div>
+                       </>
+                     )}
                    </div>
                  </DropdownMenuItem>
                 

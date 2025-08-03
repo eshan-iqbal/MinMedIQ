@@ -94,13 +94,37 @@ export class SubscriptionService {
     }
 
     const startDate = new Date();
-    const endDate = new Date();
-    if (plan.billingCycle === 'yearly') {
-      endDate.setMonth(endDate.getMonth() + 12);
-    } else if (plan.billingCycle === '6months') {
-      endDate.setMonth(endDate.getMonth() + 6);
-    } else {
-      endDate.setMonth(endDate.getMonth() + 1);
+    let endDate = new Date();
+    
+    // Calculate end date based on billing cycle using proper date arithmetic
+    switch (plan.billingCycle) {
+      case 'monthly':
+        endDate = new Date(startDate.getTime() + (30 * 24 * 60 * 60 * 1000)); // 30 days
+        break;
+      case '6months':
+        // Calculate 6 months with more precise date handling
+        const targetYear = startDate.getFullYear() + Math.floor((startDate.getMonth() + 6) / 12);
+        const targetMonth = (startDate.getMonth() + 6) % 12;
+        const targetDay = startDate.getDate();
+        
+        // Create the target date
+        const sixMonthDate = new Date(targetYear, targetMonth, targetDay);
+        
+        // Check if the date was adjusted due to month length differences
+        if (sixMonthDate.getDate() !== targetDay) {
+          // Use the last day of the target month
+          endDate = new Date(targetYear, targetMonth + 1, 0);
+        } else {
+          endDate = sixMonthDate;
+        }
+        break;
+      case 'yearly':
+        // Calculate 1 year properly
+        endDate = new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate());
+        break;
+      default:
+        // Default to monthly
+        endDate = new Date(startDate.getTime() + (30 * 24 * 60 * 60 * 1000));
     }
 
     const subscription: Omit<UserSubscription, '_id'> = {
@@ -114,14 +138,14 @@ export class SubscriptionService {
       updatedAt: new Date(),
     };
 
-    const result = await db.collection('user_subscriptions').insertOne(subscription);
+    const result = await db.collection('subscriptions').insertOne(subscription);
     return { ...subscription, _id: result.insertedId.toString() };
   }
 
   static async getUserSubscription(userId: string): Promise<UserSubscription | null> {
     const { client, db } = await connectToDatabase();
     
-    const subscription = await db.collection('user_subscriptions')
+    const subscription = await db.collection('subscriptions')
       .findOne({ userId, status: { $in: ['active', 'inactive'] } });
     
     if (!subscription) {
@@ -134,7 +158,7 @@ export class SubscriptionService {
   static async updateSubscriptionStatus(subscriptionId: string, status: 'active' | 'inactive' | 'expired' | 'cancelled'): Promise<boolean> {
     const { client, db } = await connectToDatabase();
     
-    const result = await db.collection('user_subscriptions').updateOne(
+    const result = await db.collection('subscriptions').updateOne(
       { _id: subscriptionId },
       { 
         $set: { 
@@ -154,7 +178,7 @@ export class SubscriptionService {
   static async renewSubscription(subscriptionId: string): Promise<boolean> {
     const { client, db } = await connectToDatabase();
     
-    const subscription = await db.collection('user_subscriptions').findOne({ _id: subscriptionId });
+    const subscription = await db.collection('subscriptions').findOne({ _id: subscriptionId });
     if (!subscription) {
       return false;
     }
@@ -164,20 +188,46 @@ export class SubscriptionService {
       return false;
     }
 
-    const newEndDate = new Date();
-    if (plan.billingCycle === 'yearly') {
-      newEndDate.setMonth(newEndDate.getMonth() + 12);
-    } else if (plan.billingCycle === '6months') {
-      newEndDate.setMonth(newEndDate.getMonth() + 6);
-    } else {
-      newEndDate.setMonth(newEndDate.getMonth() + 1);
+    const startDate = new Date();
+    let newEndDate = new Date();
+    
+    // Calculate new end date based on billing cycle using proper date arithmetic
+    switch (plan.billingCycle) {
+      case 'monthly':
+        newEndDate = new Date(startDate.getTime() + (30 * 24 * 60 * 60 * 1000)); // 30 days
+        break;
+      case '6months':
+        // Calculate 6 months with more precise date handling
+        const targetYear = startDate.getFullYear() + Math.floor((startDate.getMonth() + 6) / 12);
+        const targetMonth = (startDate.getMonth() + 6) % 12;
+        const targetDay = startDate.getDate();
+        
+        // Create the target date
+        const sixMonthDate = new Date(targetYear, targetMonth, targetDay);
+        
+        // Check if the date was adjusted due to month length differences
+        if (sixMonthDate.getDate() !== targetDay) {
+          // Use the last day of the target month
+          newEndDate = new Date(targetYear, targetMonth + 1, 0);
+        } else {
+          newEndDate = sixMonthDate;
+        }
+        break;
+      case 'yearly':
+        // Calculate 1 year properly
+        newEndDate = new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate());
+        break;
+      default:
+        // Default to monthly
+        newEndDate = new Date(startDate.getTime() + (30 * 24 * 60 * 60 * 1000));
     }
 
-    const result = await db.collection('user_subscriptions').updateOne(
+    const result = await db.collection('subscriptions').updateOne(
       { _id: subscriptionId },
       { 
         $set: { 
           status: 'active',
+          startDate,
           endDate: newEndDate,
           updatedAt: new Date() 
         } 
@@ -222,7 +272,7 @@ export class SubscriptionService {
   static async checkSubscriptionExpiry(): Promise<void> {
     const { client, db } = await connectToDatabase();
     
-    const expiredSubscriptions = await db.collection('user_subscriptions')
+    const expiredSubscriptions = await db.collection('subscriptions')
       .find({ 
         status: 'active',
         endDate: { $lt: new Date() }

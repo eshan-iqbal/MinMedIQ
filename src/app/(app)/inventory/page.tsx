@@ -419,7 +419,7 @@ export default function InventoryPage() {
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="price" className="text-right">
-                    Price (₨)
+                    Price (<span style={{fontFamily: 'Arial, sans-serif', fontWeight: 'bold'}}>₹</span>)
                   </Label>
                   <Input 
                     id="price" 
@@ -477,7 +477,7 @@ export default function InventoryPage() {
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                       <Label htmlFor="stripPrice" className="text-right">
-                        Strip Price (₨)
+                        Strip Price (<span style={{fontFamily: 'Arial, sans-serif', fontWeight: 'bold'}}>₹</span>)
                       </Label>
                       <Input 
                         id="stripPrice" 
@@ -563,7 +563,7 @@ export default function InventoryPage() {
                         <div className="text-xs">
                           <div className="font-medium">Pill-based</div>
                           <div className="text-muted-foreground">
-                            {item.pillsPerStrip} pills/₨{item.stripPrice}
+                            {item.pillsPerStrip} pills/<span style={{fontFamily: 'Arial, sans-serif', fontWeight: 'bold'}}>₹</span>{item.stripPrice}
                           </div>
                         </div>
                       ) : (
@@ -575,7 +575,9 @@ export default function InventoryPage() {
                         {item.stock < LOW_STOCK_THRESHOLD ? 'Low Stock' : 'In Stock'}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">₨{item.price.toFixed(2)}</TableCell>
+                                          <TableCell className="text-right">
+                        <span style={{fontFamily: 'Arial, sans-serif', fontWeight: 'bold'}}>₹</span>{item.price.toFixed(2)}
+                      </TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -670,7 +672,7 @@ export default function InventoryPage() {
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="edit-price" className="text-right">
-                Price (₨)
+                Price (<span style={{fontFamily: 'Arial, sans-serif', fontWeight: 'bold'}}>₹</span>)
               </Label>
               <Input 
                 id="edit-price" 

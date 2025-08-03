@@ -95,28 +95,91 @@ export default function SettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="pharmacy-name">Pharmacy Name *</Label>
+                  <Input
+                    id="pharmacy-name"
+                    placeholder="MinMedIQ Pharmacy"
+                    defaultValue="MinMedIQ Pharmacy"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="gstin">GST Number *</Label>
+                  <Input 
+                    id="gstin" 
+                    placeholder="4212345678"
+                    defaultValue="4212345678" 
+                  />
+                </div>
+              </div>
+              
               <div className="space-y-2">
-                <Label htmlFor="pharmacy-name">Pharmacy Name</Label>
+                <Label htmlFor="pharmacy-address">Pharmacy Address *</Label>
                 <Input
-                  id="pharmacy-name"
-                  defaultValue="MinMedIQ Pharmacy"
+                  id="pharmacy-address"
+                  placeholder="123 Medical Way, Cape Town, 7441"
+                  defaultValue="123 Medical Way, Cape Town, 7441"
                 />
               </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="contact">Phone Number *</Label>
+                  <Input 
+                    id="contact" 
+                    placeholder="(021) 508-9888"
+                    defaultValue="(021) 508-9888" 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email Address</Label>
+                  <Input 
+                    id="email" 
+                    type="email"
+                    placeholder="info@minmediq.com"
+                    defaultValue="info@minmediq.com" 
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="fax">Fax Number</Label>
+                  <Input 
+                    id="fax" 
+                    placeholder="(021) 508-9887"
+                    defaultValue="(021) 508-9887" 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="website">Website</Label>
+                  <Input 
+                    id="website" 
+                    placeholder="www.minmediq.com"
+                    defaultValue="www.minmediq.com" 
+                  />
+                </div>
+              </div>
+              
               <div className="space-y-2">
                 <Label htmlFor="logo">Logo</Label>
                 <Input id="logo" type="file" />
-                <p className="text-sm text-muted-foreground">Recommended size: 200x100 pixels.</p>
+                <p className="text-sm text-muted-foreground">Recommended size: 200x100 pixels. This will appear on your invoices.</p>
               </div>
+              
               <div className="space-y-2">
-                <Label htmlFor="gstin">GSTIN</Label>
-                <Input id="gstin" defaultValue="29ABCDE1234F1Z5" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="contact">Contact Number</Label>
-                <Input id="contact" defaultValue="+1 (555) 123-4567" />
+                <Label htmlFor="invoice-footer">Invoice Footer Message</Label>
+                <Input 
+                  id="invoice-footer"
+                  placeholder="Thank you for choosing MinMedIQ Pharmacy!"
+                  defaultValue="Thank you for choosing MinMedIQ Pharmacy!"
+                />
+                <p className="text-sm text-muted-foreground">This message will appear at the bottom of your invoices.</p>
               </div>
             </CardContent>
-            <CardFooter>
+            <CardFooter className="flex justify-between">
+              <Button variant="outline">Preview Invoice</Button>
               <Button>Save Changes</Button>
             </CardFooter>
           </Card>
