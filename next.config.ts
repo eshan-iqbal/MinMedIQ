@@ -17,11 +17,26 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Development optimizations
+  experimental: {
+    // Improve hot reloading
+    optimizePackageImports: ['lucide-react'],
+  },
   // PWA Configuration
   async headers() {
     return [
       {
         source: '/manifest.json',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=0, must-revalidate',
+          },
+        ],
+      },
+      // Add cache headers for development
+      {
+        source: '/_next/static/(.*)',
         headers: [
           {
             key: 'Cache-Control',

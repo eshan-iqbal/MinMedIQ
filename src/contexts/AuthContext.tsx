@@ -154,7 +154,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
 
     // Redirect to login
-    router.push('/login');
+    router.push('/');
   };
 
   const value = {

@@ -9,6 +9,7 @@ import {
   Trash2,
   Search,
   X,
+  RefreshCw,
 } from 'lucide-react';
 import {
   Table,
@@ -49,6 +50,7 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { Currency, CurrencySymbol } from '@/components/ui/currency';
 
 type InventoryItem = {
     id: string;
@@ -95,22 +97,23 @@ export default function InventoryPage() {
   });
   const { toast } = useToast();
 
-  useEffect(() => {
-    async function fetchInventory() {
-      try {
-        const response = await fetch('/api/inventory');
-        const data = await response.json();
-        setInventory(data);
-        setFilteredInventory(data);
-      } catch (error) {
-        console.error("Failed to fetch inventory", error);
-        toast({
-            title: 'Error',
-            description: 'Failed to load inventory.',
-            variant: 'destructive'
-        });
-      }
+  const fetchInventory = async () => {
+    try {
+      const response = await fetch('/api/inventory');
+      const data = await response.json();
+      setInventory(data);
+      setFilteredInventory(data);
+    } catch (error) {
+      console.error("Failed to fetch inventory", error);
+      toast({
+          title: 'Error',
+          description: 'Failed to load inventory.',
+          variant: 'destructive'
+      });
     }
+  };
+
+  useEffect(() => {
     fetchInventory();
   }, [toast]);
 
@@ -364,6 +367,17 @@ export default function InventoryPage() {
               </Button>
             )}
           </div>
+          <Button 
+            size="sm" 
+            variant="outline" 
+            className="h-8 gap-1"
+            onClick={fetchInventory}
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+              Refresh
+            </span>
+          </Button>
           <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
             <SheetTrigger asChild>
               <Button size="sm" className="h-8 gap-1">
@@ -419,7 +433,7 @@ export default function InventoryPage() {
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="price" className="text-right">
-                    Price (<span style={{fontFamily: 'Arial, sans-serif', fontWeight: 'bold'}}>₹</span>)
+                    Price (<CurrencySymbol />)
                   </Label>
                   <Input 
                     id="price" 
@@ -477,7 +491,7 @@ export default function InventoryPage() {
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                       <Label htmlFor="stripPrice" className="text-right">
-                        Strip Price (<span style={{fontFamily: 'Arial, sans-serif', fontWeight: 'bold'}}>₹</span>)
+                        Strip Price (<CurrencySymbol />)
                       </Label>
                       <Input 
                         id="stripPrice" 
@@ -563,7 +577,7 @@ export default function InventoryPage() {
                         <div className="text-xs">
                           <div className="font-medium">Pill-based</div>
                           <div className="text-muted-foreground">
-                            {item.pillsPerStrip} pills/<span style={{fontFamily: 'Arial, sans-serif', fontWeight: 'bold'}}>₹</span>{item.stripPrice}
+                            {item.pillsPerStrip} pills/<Currency amount={item.stripPrice || 0} />
                           </div>
                         </div>
                       ) : (
@@ -576,7 +590,7 @@ export default function InventoryPage() {
                       </Badge>
                     </TableCell>
                                           <TableCell className="text-right">
-                        <span style={{fontFamily: 'Arial, sans-serif', fontWeight: 'bold'}}>₹</span>{item.price.toFixed(2)}
+                        <Currency amount={item.price} />
                       </TableCell>
                     <TableCell>
                       <DropdownMenu>
@@ -672,7 +686,7 @@ export default function InventoryPage() {
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="edit-price" className="text-right">
-                Price (<span style={{fontFamily: 'Arial, sans-serif', fontWeight: 'bold'}}>₹</span>)
+                Price (<CurrencySymbol />)
               </Label>
               <Input 
                 id="edit-price" 

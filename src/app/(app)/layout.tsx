@@ -88,6 +88,7 @@ export default function AppLayout({
     { href: '/bills', icon: Receipt, label: 'Bills' },
     { href: '/customers', icon: Users, label: 'Customers' },
     ...(user?.role === 'admin' ? [{ href: '/users', icon: Users, label: 'Users' }] : []),
+    { href: '/subscription', icon: Crown, label: 'Subscription' },
     { href: '/settings', icon: Settings, label: 'Settings' },
   ];
   
@@ -282,6 +283,19 @@ export default function AppLayout({
                        </>
                      )}
                    </div>
+                 </DropdownMenuItem>
+                
+                                 {/* Plan Option */}
+                 <DropdownMenuItem asChild>
+                   <Link href="/subscription" className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50">
+                     <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/20">
+                       <Crown className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                     </div>
+                     <div className="flex flex-col flex-1 min-w-0">
+                       <span className="text-sm font-medium">View Plans</span>
+                       <span className="text-xs text-muted-foreground">Manage subscription & upgrade</span>
+                     </div>
+                   </Link>
                  </DropdownMenuItem>
                 
                                  {/* Current Time */}
