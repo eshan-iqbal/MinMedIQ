@@ -22,27 +22,14 @@ const nextConfig: NextConfig = {
     // Improve hot reloading
     optimizePackageImports: ['lucide-react'],
   },
-  // PWA Configuration
-  async headers() {
+  // Ensure proper handling of client-side routing
+  trailingSlash: false,
+  async redirects() {
     return [
       {
-        source: '/manifest.json',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=0, must-revalidate',
-          },
-        ],
-      },
-      // Add cache headers for development
-      {
-        source: '/_next/static/(.*)',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=0, must-revalidate',
-          },
-        ],
+        source: '/login',
+        destination: '/',
+        permanent: true,
       },
     ];
   },

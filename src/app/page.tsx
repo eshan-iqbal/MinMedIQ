@@ -41,10 +41,10 @@ export default function LoginPage() {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <Logo className="h-8 w-8 text-primary" />
-                         <div>
+            <div>
               <h1 className="text-xl font-bold text-gray-900">MinMedIQ</h1>
               <p className="text-xs text-gray-600">Building today for tomorrow's healthcare technology solutions.</p>
-             </div>
+            </div>
           </div>
           <div className="flex items-center space-x-4">
             <Link href="/about" target="_blank">
@@ -96,8 +96,8 @@ export default function LoginPage() {
                       onChange={(e) => setEmail(e.target.value)}
                       required
                       disabled={isLoading}
-             />
-           </div>
+                    />
+                  </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="password">Password</Label>
@@ -124,7 +124,7 @@ export default function LoginPage() {
                         ) : (
                           <Eye className="h-4 w-4" />
                         )}
-              </Button>
+                      </Button>
                     </div>
                   </div>
 
@@ -141,7 +141,7 @@ export default function LoginPage() {
                     ) : (
                       'Sign in'
                     )}
-              </Button>
+                  </Button>
                 </form>
 
                 <div className="mt-6 text-center text-sm text-muted-foreground">
@@ -154,17 +154,17 @@ export default function LoginPage() {
           {/* Company Information */}
           <div className="space-y-6">
             <div className="text-center lg:text-left">
-            <Badge className="mb-4" variant="secondary">
-              <Building2 className="h-3 w-3 mr-1" />
+              <Badge className="mb-4" variant="secondary">
+                <Building2 className="h-3 w-3 mr-1" />
                 About MinMedIQ
-            </Badge>
+              </Badge>
               <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
-              Transforming Healthcare Through Technology
-            </h2>
-                         <p className="text-lg text-gray-600 mb-6">
+                Transforming Healthcare Through Technology
+              </h2>
+              <p className="text-lg text-gray-600 mb-6">
                 MinMedIQ is a comprehensive pharmacy management system designed for modern medical stores. 
                 Our platform offers advanced inventory management, automated billing, and real-time analytics.
-             </p>
+              </p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -198,30 +198,30 @@ export default function LoginPage() {
                   <div className="flex items-center">
                     <span className="text-green-600 mr-2">✓</span>
                     Advanced inventory management
-                 </div>
+                  </div>
                   <div className="flex items-center">
                     <span className="text-green-600 mr-2">✓</span>
                     Automated billing system
-          </div>
+                  </div>
                   <div className="flex items-center">
                     <span className="text-green-600 mr-2">✓</span>
                     Patient record management
-        </div>
+                  </div>
                   <div className="flex items-center">
                     <span className="text-green-600 mr-2">✓</span>
                     Real-time analytics
-         </div>
+                  </div>
                   <div className="flex items-center">
-                   <span className="text-green-600 mr-2">✓</span>
+                    <span className="text-green-600 mr-2">✓</span>
                     Multi-user access control
-         </div>
+                  </div>
                   <div className="flex items-center">
-                   <span className="text-green-600 mr-2">✓</span>
-                   Unlimited users, inventory & customers
-               </div>
+                    <span className="text-green-600 mr-2">✓</span>
+                    Unlimited users, inventory & customers
+                  </div>
                 </div>
-             </CardContent>
-           </Card>
+              </CardContent>
+            </Card>
 
             <div className="flex flex-col sm:flex-row gap-4">
               <Link href="/about" className="flex-1">
@@ -239,7 +239,7 @@ export default function LoginPage() {
             </div>
           </div>
         </div>
-          </div>
-     </div>
-   );
- }
+      </div>
+    </div>
+  );
+}

@@ -102,7 +102,7 @@ export default function AboutPage() {
           <div>
             <Badge className="mb-4" variant="secondary">
               <Building2 className="h-3 w-3 mr-1" />
-              About MinMind
+              About MinMedIQ
             </Badge>
             <h2 className="text-4xl font-bold text-gray-900 mb-6">
               Transforming Healthcare Through Technology

@@ -2,14 +2,12 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { AuthProvider } from '@/contexts/AuthContext';
-import PWAInstall from '@/components/PWAInstall';
 
 export const metadata: Metadata = {
   title: 'MinMedIQ Pharmacy',
   description: 'Complete pharmacy management system for medical stores - billing, inventory, customers, and analytics',
   keywords: 'pharmacy, medical store, billing, inventory, medicine, healthcare',
   authors: [{ name: 'MinMedIQ Team' }],
-  manifest: '/manifest.json',
   icons: {
     icon: [
       { url: '/logo.png', sizes: 'any', type: 'image/png' }
@@ -17,19 +15,6 @@ export const metadata: Metadata = {
     apple: [
       { url: '/logo.png', sizes: 'any', type: 'image/png' }
     ]
-  },
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'default',
-    title: 'MinMedIQ Pharmacy'
-  },
-  other: {
-    'mobile-web-app-capable': 'yes',
-    'apple-mobile-web-app-capable': 'yes',
-    'apple-mobile-web-app-status-bar-style': 'default',
-    'apple-mobile-web-app-title': 'MinMedIQ Pharmacy',
-    'msapplication-TileColor': '#0f172a',
-    'msapplication-config': '/browserconfig.xml'
   }
 };
 
@@ -63,7 +48,6 @@ export default function RootLayout({
         <AuthProvider>
           {children}
           <Toaster />
-          <PWAInstall />
         </AuthProvider>
       </body>
     </html>

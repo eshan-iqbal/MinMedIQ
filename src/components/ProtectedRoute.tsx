@@ -16,14 +16,19 @@ export default function ProtectedRoute({ children, requiredRole }: ProtectedRout
   useEffect(() => {
     if (!isLoading) {
       if (!user) {
-        router.push('/');
-        return;
+        // Add a small delay to ensure the redirect happens properly
+        const timer = setTimeout(() => {
+          router.push('/');
+        }, 100);
+        return () => clearTimeout(timer);
       }
 
       if (requiredRole && user.role !== requiredRole) {
         // Redirect to dashboard if user doesn't have required role
-        router.push('/dashboard');
-        return;
+        const timer = setTimeout(() => {
+          router.push('/dashboard');
+        }, 100);
+        return () => clearTimeout(timer);
       }
     }
   }, [user, isLoading, requiredRole, router]);

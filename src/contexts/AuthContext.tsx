@@ -127,9 +127,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error(data.error || 'Login failed');
       }
 
-      // Store token and user data
+      // Store token and user data in both localStorage and cookies
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
+      
+      // Also set cookie for server-side access
+      document.cookie = `token=${data.token}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Strict`;
 
       setToken(data.token);
       setUser(data.user);
@@ -148,6 +151,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Clear stored data
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+
+    // Clear cookie
+    document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
 
     // Clear state
     setToken(null);

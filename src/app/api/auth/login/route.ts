@@ -24,7 +24,8 @@ export async function POST(request: NextRequest) {
 
     const token = AuthService.generateToken(user);
 
-    return NextResponse.json({
+    // Create response with JSON data
+    const response = NextResponse.json({
       success: true,
       token,
       user: {
@@ -34,6 +35,17 @@ export async function POST(request: NextRequest) {
         role: user.role,
       },
     });
+
+    // Set HTTP-only cookie for server-side access
+    response.cookies.set('token', token, {
+      httpOnly: false, // Allow client-side access for middleware
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60, // 7 days
+      path: '/',
+    });
+
+    return response;
   } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json(
