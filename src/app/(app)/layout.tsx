@@ -83,13 +83,12 @@ export default function AppLayout({
   
   const navItems = [
     { href: '/dashboard', icon: IndianRupee, label: 'Dashboard' },
+    { href: '/billing', icon: CreditCard, label: 'Sell' },
     { href: '/inventory', icon: Package2, label: 'Inventory' },
-    { href: '/billing', icon: CreditCard, label: 'Billing' },
-    { href: '/bills', icon: Receipt, label: 'Bills' },
-    { href: '/customers', icon: Users, label: 'Customers' },
-    ...(user?.role === 'admin' ? [{ href: '/users', icon: Users, label: 'Users' }] : []),
-    { href: '/subscription', icon: Crown, label: 'Subscription' },
-    { href: '/settings', icon: Settings, label: 'Settings' },
+    { href: '/agencies', icon: Building2, label: 'Suppliers' },
+    { href: '/bills', icon: Receipt, label: 'Saved Bills' },
+    { href: '/customers', icon: Users, label: 'All Customers' },
+    ...(user?.role === 'admin' ? [{ href: '/users', icon: Users, label: 'All Users' }] : []),
   ];
   
   return (

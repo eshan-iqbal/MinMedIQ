@@ -10,6 +10,13 @@ import {
   Search,
   X,
   RefreshCw,
+  Truck,
+  Package,
+  Receipt,
+  Building2,
+  Calendar,
+  User,
+  Phone,
 } from 'lucide-react';
 import {
   Table,
@@ -32,9 +39,9 @@ import {
   SheetDescription,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
   SheetFooter,
   SheetClose,
+  SheetTrigger,
 } from '@/components/ui/sheet';
 import {
   Dialog,
@@ -44,13 +51,22 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Currency, CurrencySymbol } from '@/components/ui/currency';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 type InventoryItem = {
     id: string;
@@ -62,6 +78,34 @@ type InventoryItem = {
     pillsPerStrip?: number;
     stripPrice?: number;
     isPillBased?: boolean;
+    agency?: string;
+    purchaseDate?: string;
+    purchaseOrder?: string;
+}
+
+type Agency = {
+    id: string;
+    name: string;
+    contact: string;
+    phone: string;
+    address: string;
+}
+
+type PurchaseOrder = {
+    id: string;
+    agencyId: string;
+    agencyName: string;
+    orderDate: string;
+    deliveryDate?: string;
+    totalAmount: number;
+    status: 'pending' | 'delivered' | 'cancelled';
+    items: Array<{
+        name: string;
+        quantity: number;
+        price: number;
+        batch: string;
+        expiry: string;
+    }>;
 }
 
 type FormData = {
@@ -73,6 +117,9 @@ type FormData = {
     pillsPerStrip: string;
     stripPrice: string;
     isPillBased: boolean;
+    agency: string;
+    purchaseDate: string;
+    purchaseOrder: string;
 }
 
 const LOW_STOCK_THRESHOLD = 25;
@@ -80,11 +127,16 @@ const LOW_STOCK_THRESHOLD = 25;
 export default function InventoryPage() {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [filteredInventory, setFilteredInventory] = useState<InventoryItem[]>([]);
+  const [agencies, setAgencies] = useState<Agency[]>([]);
+  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [isAgencySheetOpen, setIsAgencySheetOpen] = useState(false);
+  const [isPurchaseOrderSheetOpen, setIsPurchaseOrderSheetOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('inventory');
   const [formData, setFormData] = useState<FormData>({
     name: '',
     batch: '',
@@ -93,7 +145,10 @@ export default function InventoryPage() {
     stock: '',
     pillsPerStrip: '',
     stripPrice: '',
-    isPillBased: false
+    isPillBased: false,
+    agency: '',
+    purchaseDate: '',
+    purchaseOrder: ''
   });
   const { toast } = useToast();
 
@@ -113,8 +168,30 @@ export default function InventoryPage() {
     }
   };
 
+  const fetchAgencies = async () => {
+    try {
+      const response = await fetch('/api/agencies');
+      const data = await response.json();
+      setAgencies(data);
+    } catch (error) {
+      console.error("Failed to fetch agencies", error);
+    }
+  };
+
+  const fetchPurchaseOrders = async () => {
+    try {
+      const response = await fetch('/api/purchase-orders');
+      const data = await response.json();
+      setPurchaseOrders(data);
+    } catch (error) {
+      console.error("Failed to fetch purchase orders", error);
+    }
+  };
+
   useEffect(() => {
     fetchInventory();
+    fetchAgencies();
+    fetchPurchaseOrders();
   }, [toast]);
 
   // Filter inventory based on search query
@@ -129,7 +206,8 @@ export default function InventoryPage() {
       item.name.toLowerCase().includes(query) ||
       item.batch.toLowerCase().includes(query) ||
       item.price.toString().includes(query) ||
-      item.stock.toString().includes(query)
+      item.stock.toString().includes(query) ||
+      item.agency?.toLowerCase().includes(query)
     );
     setFilteredInventory(filtered);
   }, [searchQuery, inventory]);
@@ -152,7 +230,7 @@ export default function InventoryPage() {
     if (!formData.name || !formData.batch || !formData.expiry || !formData.price || !formData.stock) {
       toast({
         title: 'Error',
-        description: 'Please fill in all fields.',
+        description: 'Please fill in all required fields.',
         variant: 'destructive'
       });
       return;
@@ -173,7 +251,10 @@ export default function InventoryPage() {
           stock: parseInt(formData.stock),
           isPillBased: formData.isPillBased,
           pillsPerStrip: formData.isPillBased ? parseInt(formData.pillsPerStrip) : undefined,
-          stripPrice: formData.isPillBased ? parseFloat(formData.stripPrice) : undefined
+          stripPrice: formData.isPillBased ? parseFloat(formData.stripPrice) : undefined,
+          agency: formData.agency === 'direct' ? undefined : formData.agency || undefined,
+          purchaseDate: formData.purchaseDate || undefined,
+          purchaseOrder: formData.purchaseOrder || undefined
         }),
       });
 
@@ -194,7 +275,10 @@ export default function InventoryPage() {
         stock: '',
         pillsPerStrip: '',
         stripPrice: '',
-        isPillBased: false
+        isPillBased: false,
+        agency: 'direct',
+        purchaseDate: '',
+        purchaseOrder: ''
       });
       
       setIsSheetOpen(false);
@@ -224,7 +308,10 @@ export default function InventoryPage() {
       stock: item.stock.toString(),
       pillsPerStrip: item.pillsPerStrip?.toString() || '',
       stripPrice: item.stripPrice?.toString() || '',
-      isPillBased: item.isPillBased || false
+      isPillBased: item.isPillBased || false,
+      agency: item.agency || '',
+      purchaseDate: item.purchaseDate || '',
+      purchaseOrder: item.purchaseOrder || ''
     });
     setIsEditDialogOpen(true);
   };
@@ -233,7 +320,7 @@ export default function InventoryPage() {
     if (!editingItem || !formData.name || !formData.batch || !formData.expiry || !formData.price || !formData.stock) {
       toast({
         title: 'Error',
-        description: 'Please fill in all fields.',
+        description: 'Please fill in all required fields.',
         variant: 'destructive'
       });
       return;
@@ -254,7 +341,10 @@ export default function InventoryPage() {
           stock: parseInt(formData.stock),
           isPillBased: formData.isPillBased,
           pillsPerStrip: formData.isPillBased ? parseInt(formData.pillsPerStrip) : undefined,
-          stripPrice: formData.isPillBased ? parseFloat(formData.stripPrice) : undefined
+          stripPrice: formData.isPillBased ? parseFloat(formData.stripPrice) : undefined,
+          agency: formData.agency === 'direct' ? undefined : formData.agency || undefined,
+          purchaseDate: formData.purchaseDate || undefined,
+          purchaseOrder: formData.purchaseOrder || undefined
         }),
       });
 
@@ -274,7 +364,10 @@ export default function InventoryPage() {
               stock: parseInt(formData.stock),
               isPillBased: formData.isPillBased,
               pillsPerStrip: formData.isPillBased ? parseInt(formData.pillsPerStrip) : undefined,
-              stripPrice: formData.isPillBased ? parseFloat(formData.stripPrice) : undefined
+              stripPrice: formData.isPillBased ? parseFloat(formData.stripPrice) : undefined,
+              agency: formData.agency === 'direct' ? undefined : formData.agency || undefined,
+              purchaseDate: formData.purchaseDate || undefined,
+              purchaseOrder: formData.purchaseOrder || undefined
             }
           : item
       ));
@@ -289,7 +382,10 @@ export default function InventoryPage() {
               stock: parseInt(formData.stock),
               isPillBased: formData.isPillBased,
               pillsPerStrip: formData.isPillBased ? parseInt(formData.pillsPerStrip) : undefined,
-              stripPrice: formData.isPillBased ? parseFloat(formData.stripPrice) : undefined
+              stripPrice: formData.isPillBased ? parseFloat(formData.stripPrice) : undefined,
+              agency: formData.agency === 'direct' ? undefined : formData.agency || undefined,
+              purchaseDate: formData.purchaseDate || undefined,
+              purchaseOrder: formData.purchaseOrder || undefined
             }
           : item
       ));
@@ -345,7 +441,7 @@ export default function InventoryPage() {
   return (
     <>
       <div className="flex items-center">
-        <h1 className="text-lg font-semibold md:text-2xl">Inventory</h1>
+        <h1 className="text-lg font-semibold md:text-2xl">Inventory Management</h1>
         <div className="ml-auto flex items-center gap-2">
           {/* Search Input */}
           <div className="relative">
@@ -378,6 +474,114 @@ export default function InventoryPage() {
               Refresh
             </span>
           </Button>
+          
+          {/* Agency Management */}
+          <Sheet open={isAgencySheetOpen} onOpenChange={setIsAgencySheetOpen}>
+            <SheetTrigger asChild>
+              <Button size="sm" variant="outline" className="h-8 gap-1">
+                <Building2 className="h-3.5 w-3.5" />
+                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                  Agencies
+                </span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent>
+              <SheetHeader>
+                <SheetTitle>Agency Management</SheetTitle>
+                <SheetDescription>
+                  Manage your medicine suppliers and agencies.
+                </SheetDescription>
+              </SheetHeader>
+              <div className="py-4">
+                <div className="space-y-4">
+                  {agencies.map((agency) => (
+                    <Card key={agency.id}>
+                      <CardHeader>
+                        <CardTitle className="text-lg">{agency.name}</CardTitle>
+                        <CardDescription>
+                          <div className="flex items-center gap-2">
+                            <Phone className="h-4 w-4" />
+                            {agency.phone}
+                          </div>
+                          <div className="flex items-center gap-2 mt-1">
+                            <User className="h-4 w-4" />
+                            {agency.contact}
+                          </div>
+                        </CardDescription>
+                      </CardHeader>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
+
+          {/* Purchase Orders */}
+          <Sheet open={isPurchaseOrderSheetOpen} onOpenChange={setIsPurchaseOrderSheetOpen}>
+            <SheetTrigger asChild>
+              <Button size="sm" variant="outline" className="h-8 gap-1">
+                <Receipt className="h-3.5 w-3.5" />
+                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                  Orders
+                </span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent>
+              <SheetHeader>
+                <SheetTitle>Purchase Orders</SheetTitle>
+                <SheetDescription>
+                  Track your medicine purchase orders and deliveries.
+                </SheetDescription>
+              </SheetHeader>
+              <div className="py-4">
+                <div className="space-y-4">
+                  {purchaseOrders.map((order) => (
+                    <Card key={order.id}>
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-lg">Order #{order.id}</CardTitle>
+                          <Badge variant={order.status === 'delivered' ? 'default' : 'secondary'}>
+                            {order.status}
+                          </Badge>
+                        </div>
+                        <CardDescription>
+                          <div className="flex items-center gap-2">
+                            <Building2 className="h-4 w-4" />
+                            {order.agencyName}
+                          </div>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Calendar className="h-4 w-4" />
+                            {order.orderDate}
+                          </div>
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-sm">
+                          <div className="font-medium">Items:</div>
+                          <div className="space-y-1 mt-2">
+                            {order.items.map((item, index) => (
+                              <div key={index} className="flex justify-between text-xs">
+                                <span>{item.name} (Qty: {item.quantity})</span>
+                                <span><Currency amount={item.price} /></span>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="border-t pt-2 mt-2">
+                            <div className="flex justify-between font-medium">
+                              <span>Total:</span>
+                              <span><Currency amount={order.totalAmount} /></span>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
+
+          {/* Add Medicine */}
           <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
             <SheetTrigger asChild>
               <Button size="sm" className="h-8 gap-1">
@@ -387,17 +591,17 @@ export default function InventoryPage() {
                 </span>
               </Button>
             </SheetTrigger>
-            <SheetContent>
+            <SheetContent className="overflow-y-auto">
               <SheetHeader>
                 <SheetTitle>Add Medicine</SheetTitle>
                 <SheetDescription>
-                  Fill in the details for the new medicine.
+                  Add new medicine to inventory. Include agency details if purchased from supplier.
                 </SheetDescription>
               </SheetHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="name" className="text-right">
-                    Name
+                    Name *
                   </Label>
                   <Input 
                     id="name" 
@@ -409,7 +613,7 @@ export default function InventoryPage() {
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="batch" className="text-right">
-                    Batch No.
+                    Batch No. *
                   </Label>
                   <Input 
                     id="batch" 
@@ -421,7 +625,7 @@ export default function InventoryPage() {
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="expiry" className="text-right">
-                    Expiry Date
+                    Expiry Date *
                   </Label>
                   <Input 
                     id="expiry" 
@@ -433,7 +637,7 @@ export default function InventoryPage() {
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="price" className="text-right">
-                    Price (<CurrencySymbol />)
+                    Price (<CurrencySymbol />) *
                   </Label>
                   <Input 
                     id="price" 
@@ -446,7 +650,7 @@ export default function InventoryPage() {
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="stock" className="text-right">
-                    Stock
+                    Stock *
                   </Label>
                   <Input 
                     id="stock" 
@@ -457,53 +661,106 @@ export default function InventoryPage() {
                     onChange={(e) => handleInputChange('stock', e.target.value)}
                   />
                 </div>
-                
-                {/* Pill/Strip Configuration */}
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label className="text-right">
-                    <input
-                      type="checkbox"
-                      checked={formData.isPillBased}
-                      onChange={(e) => handleInputChange('isPillBased', e.target.checked.toString())}
-                      className="mr-2"
+
+                {/* Agency Information */}
+                <div className="border-t pt-4">
+                  <h3 className="text-sm font-medium mb-3">Agency Information (Optional)</h3>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="agency" className="text-right">
+                      Agency
+                    </Label>
+                    <Select 
+                      value={formData.agency} 
+                      onValueChange={(value) => handleInputChange('agency', value)}
+                    >
+                      <SelectTrigger className="col-span-3">
+                        <SelectValue placeholder="Select agency" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="direct">Direct Purchase</SelectItem>
+                        {agencies.map((agency) => (
+                          <SelectItem key={agency.id} value={agency.name}>
+                            {agency.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4 mt-2">
+                    <Label htmlFor="purchaseDate" className="text-right">
+                      Purchase Date
+                    </Label>
+                    <Input 
+                      id="purchaseDate" 
+                      type="date" 
+                      className="col-span-3"
+                      value={formData.purchaseDate}
+                      onChange={(e) => handleInputChange('purchaseDate', e.target.value)}
                     />
-                    Pill-based Medicine
-                  </Label>
-                  <div className="col-span-3 text-sm text-muted-foreground">
-                    Enable if this medicine is sold by individual pills from strips
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4 mt-2">
+                    <Label htmlFor="purchaseOrder" className="text-right">
+                      Order No.
+                    </Label>
+                    <Input 
+                      id="purchaseOrder" 
+                      placeholder="e.g. PO-2024-001" 
+                      className="col-span-3"
+                      value={formData.purchaseOrder}
+                      onChange={(e) => handleInputChange('purchaseOrder', e.target.value)}
+                    />
                   </div>
                 </div>
                 
-                {formData.isPillBased && (
-                  <>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="pillsPerStrip" className="text-right">
-                        Pills per Strip
-                      </Label>
-                      <Input 
-                        id="pillsPerStrip" 
-                        type="number" 
-                        placeholder="10" 
-                        className="col-span-3"
-                        value={formData.pillsPerStrip}
-                        onChange={(e) => handleInputChange('pillsPerStrip', e.target.value)}
+                {/* Pill/Strip Configuration */}
+                <div className="border-t pt-4">
+                  <h3 className="text-sm font-medium mb-3">Medicine Configuration</h3>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label className="text-right">
+                      <input
+                        type="checkbox"
+                        checked={formData.isPillBased}
+                        onChange={(e) => handleInputChange('isPillBased', e.target.checked.toString())}
+                        className="mr-2"
                       />
+                      Pill-based Medicine
+                    </Label>
+                    <div className="col-span-3 text-sm text-muted-foreground">
+                      Enable if this medicine is sold by individual pills from strips
                     </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="stripPrice" className="text-right">
-                        Strip Price (<CurrencySymbol />)
-                      </Label>
-                      <Input 
-                        id="stripPrice" 
-                        type="number" 
-                        placeholder="100" 
-                        className="col-span-3"
-                        value={formData.stripPrice}
-                        onChange={(e) => handleInputChange('stripPrice', e.target.value)}
-                      />
-                    </div>
-                  </>
-                )}
+                  </div>
+                  
+                  {formData.isPillBased && (
+                    <>
+                      <div className="grid grid-cols-4 items-center gap-4 mt-2">
+                        <Label htmlFor="pillsPerStrip" className="text-right">
+                          Pills per Strip
+                        </Label>
+                        <Input 
+                          id="pillsPerStrip" 
+                          type="number" 
+                          placeholder="10" 
+                          className="col-span-3"
+                          value={formData.pillsPerStrip}
+                          onChange={(e) => handleInputChange('pillsPerStrip', e.target.value)}
+                        />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4 mt-2">
+                        <Label htmlFor="stripPrice" className="text-right">
+                          Strip Price (<CurrencySymbol />)
+                        </Label>
+                        <Input 
+                          id="stripPrice" 
+                          type="number" 
+                          placeholder="100" 
+                          className="col-span-3"
+                          value={formData.stripPrice}
+                          onChange={(e) => handleInputChange('stripPrice', e.target.value)}
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
               <SheetFooter>
                 <SheetClose asChild>
@@ -521,126 +778,241 @@ export default function InventoryPage() {
           </Sheet>
         </div>
       </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Medicine Stock</CardTitle>
-          <CardDescription>
-            Manage your medicine inventory and view stock levels.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Batch No.</TableHead>
-                <TableHead>Expiry</TableHead>
-                <TableHead>Stock</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Price</TableHead>
-                <TableHead>
-                  <span className="sr-only">Actions</span>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredInventory.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8">
-                    <div className="flex flex-col items-center gap-2">
-                      <Search className="h-8 w-8 text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground">
-                        {searchQuery ? `No medicines found matching "${searchQuery}"` : 'No medicines found'}
-                      </p>
-                      {searchQuery && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setSearchQuery('')}
-                        >
-                          Clear search
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredInventory.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell className="font-medium">{item.name}</TableCell>
-                    <TableCell>{item.batch}</TableCell>
-                    <TableCell>{item.expiry}</TableCell>
-                    <TableCell>{item.stock}</TableCell>
-                    <TableCell>
-                      {item.isPillBased ? (
-                        <div className="text-xs">
-                          <div className="font-medium">Pill-based</div>
-                          <div className="text-muted-foreground">
-                            {item.pillsPerStrip} pills/<Currency amount={item.stripPrice || 0} />
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="inventory">Inventory</TabsTrigger>
+          <TabsTrigger value="agencies">Agencies</TabsTrigger>
+          <TabsTrigger value="orders">Purchase Orders</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="inventory">
+          <Card>
+            <CardHeader>
+              <CardTitle>Medicine Stock</CardTitle>
+              <CardDescription>
+                Manage your medicine inventory and view stock levels.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Batch No.</TableHead>
+                    <TableHead>Expiry</TableHead>
+                    <TableHead>Stock</TableHead>
+                    <TableHead>Agency</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Price</TableHead>
+                    <TableHead>
+                      <span className="sr-only">Actions</span>
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredInventory.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={9} className="text-center py-8">
+                        <div className="flex flex-col items-center gap-2">
+                          <Search className="h-8 w-8 text-muted-foreground" />
+                          <p className="text-sm text-muted-foreground">
+                            {searchQuery ? `No medicines found matching "${searchQuery}"` : 'No medicines found'}
+                          </p>
+                          {searchQuery && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSearchQuery('')}
+                            >
+                              Clear search
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredInventory.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell className="font-medium">{item.name}</TableCell>
+                        <TableCell>{item.batch}</TableCell>
+                        <TableCell>{item.expiry}</TableCell>
+                        <TableCell>{item.stock}</TableCell>
+                        <TableCell>
+                          {item.agency ? (
+                            <div className="text-xs">
+                              <div className="font-medium">{item.agency}</div>
+                              {item.purchaseOrder && (
+                                <div className="text-muted-foreground">Order: {item.purchaseOrder}</div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">Direct</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {item.isPillBased ? (
+                            <div className="text-xs">
+                              <div className="font-medium">Pill-based</div>
+                              <div className="text-muted-foreground">
+                                {item.pillsPerStrip} pills/<Currency amount={item.stripPrice || 0} />
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">Regular</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={item.stock < LOW_STOCK_THRESHOLD ? 'destructive' : 'default'}>
+                            {item.stock < LOW_STOCK_THRESHOLD ? 'Low Stock' : 'In Stock'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Currency amount={item.price} />
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                aria-haspopup="true"
+                                size="icon"
+                                variant="ghost"
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Toggle menu</span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                              <DropdownMenuItem onClick={() => handleEdit(item)}>
+                                <FilePenLine className="mr-2 h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                className="text-destructive"
+                                onClick={() => handleDelete(item.id)}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+            <CardFooter>
+              <div className="text-xs text-muted-foreground">
+                Showing <strong>1-{filteredInventory.length}</strong> of <strong>{inventory.length}</strong> products
+                {searchQuery && (
+                  <span className="ml-2 text-blue-600">
+                    (filtered by "{searchQuery}")
+                  </span>
+                )}
+              </div>
+            </CardFooter>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="agencies">
+          <Card>
+            <CardHeader>
+              <CardTitle>Agency Management</CardTitle>
+              <CardDescription>
+                Manage your medicine suppliers and agencies.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="max-h-[600px] overflow-y-auto">
+              <div className="grid gap-4">
+                {agencies.map((agency) => (
+                  <Card key={agency.id}>
+                    <CardHeader>
+                      <CardTitle className="text-lg">{agency.name}</CardTitle>
+                      <CardDescription>
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-4 w-4" />
+                          {agency.phone}
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <User className="h-4 w-4" />
+                          {agency.contact}
+                        </div>
+                        <div className="mt-2 text-sm">
+                          {agency.address}
+                        </div>
+                      </CardDescription>
+                    </CardHeader>
+                  </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="orders">
+          <Card>
+            <CardHeader>
+              <CardTitle>Purchase Orders</CardTitle>
+              <CardDescription>
+                Track your medicine purchase orders and deliveries.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="max-h-[600px] overflow-y-auto">
+              <div className="grid gap-4">
+                {purchaseOrders.map((order) => (
+                  <Card key={order.id}>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-lg">Order #{order.id}</CardTitle>
+                        <Badge variant={order.status === 'delivered' ? 'default' : 'secondary'}>
+                          {order.status}
+                        </Badge>
+                      </div>
+                      <CardDescription>
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-4 w-4" />
+                          {order.agencyName}
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Calendar className="h-4 w-4" />
+                          {order.orderDate}
+                        </div>
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-sm">
+                        <div className="font-medium">Items:</div>
+                        <div className="space-y-1 mt-2">
+                          {order.items.map((item, index) => (
+                            <div key={index} className="flex justify-between text-xs">
+                              <span>{item.name} (Qty: {item.quantity})</span>
+                              <span><Currency amount={item.price} /></span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="border-t pt-2 mt-2">
+                          <div className="flex justify-between font-medium">
+                            <span>Total:</span>
+                            <span><Currency amount={order.totalAmount} /></span>
                           </div>
                         </div>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">Regular</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={item.stock < LOW_STOCK_THRESHOLD ? 'destructive' : 'default'}>
-                        {item.stock < LOW_STOCK_THRESHOLD ? 'Low Stock' : 'In Stock'}
-                      </Badge>
-                    </TableCell>
-                                          <TableCell className="text-right">
-                        <Currency amount={item.price} />
-                      </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            aria-haspopup="true"
-                            size="icon"
-                            variant="ghost"
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Toggle menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => handleEdit(item)}>
-                            <FilePenLine className="mr-2 h-4 w-4" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            className="text-destructive"
-                            onClick={() => handleDelete(item.id)}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-        <CardFooter>
-          <div className="text-xs text-muted-foreground">
-            Showing <strong>1-{filteredInventory.length}</strong> of <strong>{inventory.length}</strong> products
-            {searchQuery && (
-              <span className="ml-2 text-blue-600">
-                (filtered by "{searchQuery}")
-              </span>
-            )}
-          </div>
-        </CardFooter>
-      </Card>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Medicine</DialogTitle>
             <DialogDescription>
